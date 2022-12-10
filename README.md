@@ -2,7 +2,7 @@
 
 ## Current construction
 
-This is a Pytorch implementation of CIKM'22 paper [Contrastive Cross-Domain Sequential Recommendation](https://dl.acm.org/doi/pdf/10.1145/3511808.3557262):
+This is a Pytorch implementation of CIKM'22 paper [Contrastive Cross-Domain Sequential Recommendation](https://dl.acm.org/doi/abs/10.1145/3511808.3557262):
 
 Current under construction.
 
