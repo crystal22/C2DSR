@@ -54,9 +54,9 @@ def main():
     parser.add_argument('--lambda_loss', type=float, default=0.7)
 
     # train part
-    parser.add_argument('--n_epoch', type=int, default=100, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=64, help='size of batch')
-    parser.add_argument('--num_workers', type=int, default=3, help='# dataloader worker')
+    parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
+    parser.add_argument('--batch_size', type=int, default=4, help='size of batch')
+    parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--cuda', type=str, default='0', help='running device')
 
