@@ -105,7 +105,7 @@ class C2DSR(torch.nn.Module):
         return seq_attn_enc, seq_attn_enc_x, seq_attn_enc_y
 
     def false_forward(self, seq_neg, pos):
-        seq_gnn_enc_neg = self.query_state(self.hi_share, seq_neg) + self.embed_i(seq_neg)
+        seq_gnn_enc_neg = query_state(self.hi_share, seq_neg) + self.embed_i(seq_neg)
         seq_gnn_enc_neg *= self.embed_i.embedding_dim ** 0.5
         seq_attn_enc_neg = self.encoder_attn(seq_neg, seq_gnn_enc_neg, pos)
 
