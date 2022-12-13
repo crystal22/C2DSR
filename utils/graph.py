@@ -98,7 +98,7 @@ def preprocess_graph(args, filename):
 
 
 def make_graph(args, filename):
-    if args.raw_data:
+    if args.use_raw:
         adj, adj_single = preprocess_graph(args, filename)
         if args.save_processed:
             with open(join(args.path_data, 'graph.pkl'), 'wb') as f:
