@@ -1,9 +1,7 @@
 from os.path import join
-import time
 from tqdm import tqdm
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from dataloader2 import get_dataloader

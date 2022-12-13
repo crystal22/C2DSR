@@ -310,8 +310,8 @@ def shuffle(data, batch_size):
 
 def get_dataloader(args):
 
-    args.n_item_x = count_item(join(args.path_raw, 'Alist.txt'))
-    args.n_item_y = count_item(join(args.path_raw, 'Blist.txt'))
+    args.n_item_x = count_item(join(args.path_raw, 'items_x.txt'))
+    args.n_item_y = count_item(join(args.path_raw, 'items_y.txt'))
     args.n_item = args.n_item_x + args.n_item_y + 1  # with padding
     args.idx_pad = args.n_item - 1
 

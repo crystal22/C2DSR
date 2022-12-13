@@ -110,8 +110,8 @@ def leak_stats(train, valid, test):
 dataset = "Movie-Book"
 # data = "Entertainment-Education"
 
-read_item(dataset+"/Alist.txt")
-read_item(dataset+"/Blist.txt")
+read_item(dataset+"/items_x.txt")
+read_item(dataset+"/items_y.txt")
 read_user(dataset+"/userlist.txt")
 
 
@@ -121,8 +121,8 @@ leak_stats(dataset+"/train_new.txt", dataset+"/val_new.txt", dataset+"/test_new.
 
 
 """
-Food-Kitchen/Alist.txt has 29207 items!
-Food-Kitchen/Blist.txt has 34886 items!
+Food-Kitchen/items_x.txt has 29207 items!
+Food-Kitchen/items_y.txt has 34886 items!
 
 Food-Kitchen/userlist.txt has 16579 users!
 
@@ -135,8 +135,8 @@ Food-Kitchen/test.txt has 17280 interactions!
 
 
 
-Movie-Book/Alist.txt has 36845 items!
-Movie-Book/Blist.txt has 63937 items!
+Movie-Book/items_x.txt has 36845 items!
+Movie-Book/items_y.txt has 63937 items!
 
 Movie-Book/userlist.txt has 15352 users!
 

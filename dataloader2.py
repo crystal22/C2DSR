@@ -262,8 +262,10 @@ def count_item(path):
 
 def get_dataloader(args):
 
-    args.n_item_x = count_item(join(args.path_raw, 'Alist.txt'))
-    args.n_item_y = count_item(join(args.path_raw, 'Blist.txt'))
+    p = args.path_raw if args.use_raw else args.path_data
+
+    args.n_item_x = count_item(join(p, 'items_x.txt'))
+    args.n_item_y = count_item(join(p, 'items_y.txt'))
     args.n_item = args.n_item_x + args.n_item_y + 1  # with padding
     args.idx_pad = args.n_item - 1
 
