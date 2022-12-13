@@ -63,10 +63,6 @@ class C2DSR(torch.nn.Module):
         self.hi_x = self.gnn_x(self.embed_i_x.weight, self.adj_specific)
         self.hi_y = self.gnn_y(self.embed_i_y.weight, self.adj_specific)
 
-        # self.hi_share = self.embed_i.weight
-        # self.hi_x = self.embed_i_x.weight
-        # self.hi_y = self.embed_i_y.weight
-
     def forward(self, seq, seq_x, seq_y, pos, pos_x, pos_y):
         seq_gnn_enc = F.embedding(seq, self.hi_share) + self.embed_i(seq)
         seq_gnn_enc_x = F.embedding(seq_x, self.hi_x) + self.embed_i_x(seq_x)

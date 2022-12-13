@@ -118,8 +118,6 @@ class Trainer(object):
         loss_mi = loss_cts_x + loss_cts_y
 
         # recommendation
-        gt = gt[:, -self.len_rec:]
-        gt_mask = gt_mask[:, -self.len_rec:]
         gt_share_x = gt_share_x[:, -self.len_rec:]
         gt_mask_share_x = gt_mask_share_x[:, -self.len_rec:]
         gt_share_y = gt_share_y[:, -self.len_rec:]
@@ -169,7 +167,7 @@ class Trainer(object):
         seq_enc, seq_enc_x, seq_enc_y = self.model(seq, seq_x, seq_y, pos, pos_x, pos_y)
 
         pred_x, pred_y = [], []
-        for idx, feat in enumerate(seq_enc):  # b * s * f
+        for idx, feat in enumerate(seq_enc):
             if XorY[idx] == 0:
                 share_enc = seq_enc[idx, -1]
                 specific_enc = seq_enc_x[idx, X_last[idx]]

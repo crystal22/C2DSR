@@ -1,5 +1,4 @@
 from os.path import join
-import numpy as np
 import random
 import codecs
 import pickle
@@ -11,11 +10,12 @@ from torch.utils.data import Dataset, DataLoader
 class CDSRDataset(Dataset):
     def __init__(self, args, mode):
         self.mode = mode
+        self.device = args.device
         self.batch_size = args.batch_size
         self.dataset = args.dataset
         self.n_item_x = args.n_item_x
         self.n_item_y = args.n_item_y
-        self.idx_pad = args.n_item_x + args.n_item_y
+        self.idx_pad = args.idx_pad
         self.len_max = args.len_max
         self.n_neg_sample = args.n_neg_sample
 
@@ -33,122 +33,126 @@ class CDSRDataset(Dataset):
             with open(join(args.path_data, mode + '.pkl'), 'rb') as f:
                 self.data = pickle.load(f)
 
+        self.length = len(self.data)
+
     def read_raw(self, path_file, is_train=True):
+
         def takeSecond(elem):
             return elem[1]
+
         with codecs.open(path_file, 'r', encoding='utf-8') as f:
             data = []
             for line in f:
-                res = []
+                seq_ui = []
                 line = line.strip().split('\t')[2:]
-                for w in line:
-                    w = w.split('|')
-                    res.append((int(w[0]), int(w[1])))
-                res.sort(key=takeSecond)
-                res_2 = []
-                for r in res[:-1]:
-                    res_2.append(r[0])
+                for ui in line:
+                    ui = ui.split('|')
+                    seq_ui.append((int(ui[0]), int(ui[1])))
+                seq_ui.sort(key=takeSecond)
+                seq_i = []
+                for r in seq_ui[:-1]:
+                    seq_i.append(r[0])
 
                 if not is_train:
-                    # denoted the corresponding validation/test entry
-                    if res[-1][0] >= self.n_item_x:
-                        data.append([res_2, 1, res[-1][0]])
-
+                    if seq_ui[-1][0] >= self.n_item_x:
+                        data.append([seq_i, 1, seq_ui[-1][0]])
                     else:
-                        data.append([res_2, 0, res[-1][0]])
+                        data.append([seq_i, 0, seq_ui[-1][0]])
                 else:
-                    data.append(res_2)
+                    data.append(seq_i)
         return data
 
     def preprocess_train(self, data):
-        """ Preprocess the data and convert to ids. """
+        """ Preprocess the raw sequence data for training. """
         processed = []
-        for seq in data:
-            gt = copy.deepcopy(seq)[1:]
-            seq = seq[:-1]
-            len_seq = len(seq)
+        for u_behavior in data:
+            # extract from sequences
+            gt = u_behavior[1:]
+            seq_in = u_behavior[:-1]
+            len_seq = len(seq_in)
 
-            # gt
-            gt_share_x, gt_share_y, gt_mask_share_x, gt_mask_share_y = [], [], [], []
-            for w in gt:
-                if w < self.n_item_x:
-                    gt_share_x.append(w)
-                    gt_mask_share_x.append(1)
-                    gt_share_y.append(self.n_item_y)
-                    gt_mask_share_y.append(0)
-                else:
-                    gt_share_x.append(self.n_item_x)
-                    gt_mask_share_x.append(0)
-                    gt_share_y.append(w - self.n_item_x)
-                    gt_mask_share_y.append(1)
-
-            # seq
-            pos = list(range(1, len(seq)+1))
             gt_mask = [1] * len_seq
+            pos = list(range(1, len_seq+1))
 
             seq_x, x_count, pos_x = [], 1, []
             seq_y, y_count, pos_y = [], 1, []
-            crpt_x, crpt_y = [], []
+            seq_crpt_x, seq_crpt_y = [], []
 
-            for w in seq:
-                if w < self.n_item_x:
-                    crpt_x.append(w)
-                    seq_x.append(w)
-                    pos_x.append(x_count)
-                    x_count += 1
-                    crpt_y.append(random.randint(0, self.n_item_x - 1))
-                    seq_y.append(self.idx_pad)
-                    pos_y.append(0)
+            gt_share_x, gt_share_y, gt_mask_share_x, gt_mask_share_y = [], [], [], []
 
-                else:
-                    crpt_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
-                    seq_x.append(self.idx_pad)
-                    pos_x.append(0)
-                    crpt_y.append(w)
-                    seq_y.append(w)
-                    pos_y.append(y_count)
-                    y_count += 1
+            for i, idx in enumerate(seq_in):
+                if i != 0:
+                    if idx < self.n_item_x:
+                        seq_crpt_x.append(idx)
+                        seq_x.append(idx)
+                        pos_x.append(x_count)
+                        x_count += 1
+                        seq_crpt_y.append(random.randint(0, self.n_item_x - 1))
+                        seq_y.append(self.idx_pad)
+                        pos_y.append(0)
+                    else:
+                        seq_crpt_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
+                        seq_x.append(self.idx_pad)
+                        pos_x.append(0)
+                        seq_crpt_y.append(idx)
+                        seq_y.append(idx)
+                        pos_y.append(y_count)
+                        y_count += 1
 
-            now = -1
-            x_gt = [self.n_item_x] * len(seq_x)  # caution!
+                if i != (len_seq - 1):
+                    if idx < self.n_item_x:
+                        gt_share_x.append(idx)
+                        gt_share_y.append(self.n_item_y)
+                        gt_mask_share_x.append(1)
+                        gt_mask_share_y.append(0)
+                    else:
+                        gt_share_x.append(self.n_item_x)
+                        gt_share_y.append(idx - self.n_item_x)
+                        gt_mask_share_x.append(0)
+                        gt_mask_share_y.append(1)
+
+            # formulate domain-specific sequences, pad for x and y are different with its own length of item set
+            gt_x = [self.n_item_x] * len(seq_x)
             gt_mask_x = [0] * len(seq_x)
-            for i in range(1, len(seq_x)+1):
-                if pos_x[-i]:
-                    if now == -1:
-                        now = seq_x[-i]
+            cur = -1
+            for i in range(1, len_seq):
+                if pos_x[-i]:  # find last non-pad item
+                    if cur == -1:  # fetch ground truth for domain-specific seq and pad it in inputs
+                        cur = seq_x[-i]
                         if gt[-1] < self.n_item_x:
-                            x_gt[-i] = gt[-1]
+                            gt_x[-i] = gt[-1]
                             gt_mask_x[-i] = 1
                         else:
                             seq_x[-i] = self.idx_pad
                             pos_x[-i] = 0
                     else:
-                        x_gt[-i] = now
+                        gt_x[-i] = cur
                         gt_mask_x[-i] = 1
-                        now = seq_x[-i]
+                        cur = seq_x[-i]
             if sum(gt_mask_x) == 0:
                 continue
 
-            now = -1
-            y_gt = [self.n_item_y] * len(seq_y)  # caution!
+            cur = -1
+            gt_y = [self.n_item_y] * len(seq_y)  # caution!
             gt_mask_y = [0] * len(seq_y)
-            for i in range(1, len(seq_y)+1):
+            for i in range(1, len(seq_y)):
                 if pos_y[-i]:
-                    if now == -1:
-                        now = seq_y[-i] - self.n_item_x
+                    if cur == -1:
+                        cur = seq_y[-i] - self.n_item_x
                         if gt[-1] > self.n_item_x:
-                            y_gt[-i] = gt[-1] - self.n_item_x
+                            gt_y[-i] = gt[-1] - self.n_item_x
                             gt_mask_y[-i] = 1
                         else:
                             seq_y[-i] = self.idx_pad
                             pos_y[-i] = 0
                     else:
-                        y_gt[-i] = now
+                        gt_y[-i] = cur
                         gt_mask_y[-i] = 1
-                        now = seq_y[-i] - self.n_item_x
+                        cur = seq_y[-i] - self.n_item_x
             if sum(gt_mask_y) == 0:
                 continue
 
+            # pad sequence
             if len(seq) < self.len_max:
                 pos = [0] * (self.len_max - len(seq)) + pos
                 pos_x = [0] * (self.len_max - len(seq)) + pos_x
@@ -157,8 +161,8 @@ class CDSRDataset(Dataset):
                 gt = [self.idx_pad] * (self.len_max - len(seq)) + gt
                 gt_share_x = [self.n_item_x] * (self.len_max - len(seq)) + gt_share_x
                 gt_share_y = [self.n_item_y] * (self.len_max - len(seq)) + gt_share_y
-                x_gt = [self.n_item_x] * (self.len_max - len(seq)) + x_gt
-                y_gt = [self.n_item_y] * (self.len_max - len(seq)) + y_gt
+                gt_x = [self.n_item_x] * (self.len_max - len(seq)) + gt_x
+                gt_y = [self.n_item_y] * (self.len_max - len(seq)) + gt_y
 
                 gt_mask = [0] * (self.len_max - len(seq)) + gt_mask
                 gt_mask_share_x = [0] * (self.len_max - len(seq)) + gt_mask_share_x
@@ -166,17 +170,18 @@ class CDSRDataset(Dataset):
                 gt_mask_x = [0] * (self.len_max - len(seq)) + gt_mask_x
                 gt_mask_y = [0] * (self.len_max - len(seq)) + gt_mask_y
 
-                crpt_x = [self.idx_pad] * (self.len_max - len(seq)) + crpt_x
-                crpt_y = [self.idx_pad] * (self.len_max - len(seq)) + crpt_y
+                seq_crpt_x = [self.idx_pad] * (self.len_max - len(seq)) + seq_crpt_x
+                seq_crpt_y = [self.idx_pad] * (self.len_max - len(seq)) + seq_crpt_y
                 seq_x = [self.idx_pad] * (self.len_max - len(seq)) + seq_x
                 seq_y = [self.idx_pad] * (self.len_max - len(seq)) + seq_y
                 seq = [self.idx_pad] * (self.len_max - len(seq)) + seq
 
-            processed.append([seq, seq_x, seq_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, x_gt, y_gt, gt_mask,
-                              gt_mask_share_x, gt_mask_share_y, gt_mask_x, gt_mask_y, crpt_x, crpt_y])
+            processed.append([seq, seq_x, seq_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask,
+                              gt_mask_share_x, gt_mask_share_y, gt_mask_x, gt_mask_y, seq_crpt_x, seq_crpt_y])
         return processed
 
     def preprocess_evaluate(self, data):
+        """ Preprocess the raw sequence data for evaluation including validation and testing. """
         processed = []
         for [seq, XorY, gt] in data:
             len_seq = len(seq)
@@ -233,23 +238,12 @@ class CDSRDataset(Dataset):
         return processed
 
     def __len__(self):
-        return len(self.data)
+        return self.length
 
-    def __getitem__(self, key):
+    def __getitem__(self, index):
         """ Get a batch with index. """
-        data = self.data[key]
-        if self.mode != 'train':
-            return torch.LongTensor(data[0]), torch.LongTensor(data[1]), torch.LongTensor(data[2]),\
-                torch.LongTensor(data[3]), torch.LongTensor(data[4]), torch.LongTensor(data[5]),\
-                torch.LongTensor(data[6]), torch.LongTensor(data[7]), torch.LongTensor(data[8]),\
-                torch.LongTensor(data[9]), torch.LongTensor(data[10])
-        else:
-            return torch.LongTensor(data[0]), torch.LongTensor(data[1]), torch.LongTensor(data[2]),\
-                torch.LongTensor(data[3]), torch.LongTensor(data[4]), torch.LongTensor(data[5]),\
-                torch.LongTensor(data[6]), torch.LongTensor(data[7]), torch.LongTensor(data[8]),\
-                torch.LongTensor(data[9]), torch.LongTensor(data[10]), torch.LongTensor(data[11]),\
-                torch.LongTensor(data[12]), torch.LongTensor(data[13]), torch.LongTensor(data[14]),\
-                torch.LongTensor(data[15]), torch.LongTensor(data[16]), torch.LongTensor(data[17])
+        data = self.data[index]
+        return tuple((map(lambda x: torch.LongTensor(x).to(self.device), data)))
 
 
 def count_item(path):
