@@ -1,4 +1,5 @@
 from os.path import join
+import numpy as np
 import random
 import codecs
 import pickle
@@ -14,7 +15,9 @@ class CDSRDataset(Dataset):
         self.dataset = args.dataset
         self.n_item_x = args.n_item_x
         self.n_item_y = args.n_item_y
+        self.idx_pad = args.n_item_x + args.n_item_y
         self.len_max = args.len_max
+        self.n_neg_sample = args.n_neg_sample
 
         if args.use_raw:
             if mode == 'train':
@@ -60,176 +63,173 @@ class CDSRDataset(Dataset):
     def preprocess_train(self, data):
         """ Preprocess the data and convert to ids. """
         processed = []
-        for d in data:  # the pad is needed! but to be careful.
-            gt = copy.deepcopy(d)[1:]
-            share_x_gt, share_y_gt, share_x_gt_mask, share_y_gt_mask = [], [], [], []
+        for seq in data:
+            gt = copy.deepcopy(seq)[1:]
+            seq = seq[:-1]
+            len_seq = len(seq)
+
+            # gt
+            gt_share_x, gt_share_y, gt_mask_share_x, gt_mask_share_y = [], [], [], []
             for w in gt:
                 if w < self.n_item_x:
-                    share_x_gt.append(w)
-                    share_x_gt_mask.append(1)
-                    share_y_gt.append(self.n_item_y)
-                    share_y_gt_mask.append(0)
+                    gt_share_x.append(w)
+                    gt_mask_share_x.append(1)
+                    gt_share_y.append(self.n_item_y)
+                    gt_mask_share_y.append(0)
                 else:
-                    share_x_gt.append(self.n_item_x)
-                    share_x_gt_mask.append(0)
-                    share_y_gt.append(w - self.n_item_x)
-                    share_y_gt_mask.append(1)
+                    gt_share_x.append(self.n_item_x)
+                    gt_mask_share_x.append(0)
+                    gt_share_y.append(w - self.n_item_x)
+                    gt_mask_share_y.append(1)
 
-            d = d[:-1]  # delete the ground truth
-            pos = list(range(len(d)+1))[1:]
-            gt_mask = [1] * len(d)
+            # seq
+            pos = list(range(1, len(seq)+1))
+            gt_mask = [1] * len_seq
 
-            xd, x_count, pos_x = [], 1, []
-            yd, y_count, pos_y = [], 1, []
-            x_corrupt, y_corrupt = [], []
+            seq_x, x_count, pos_x = [], 1, []
+            seq_y, y_count, pos_y = [], 1, []
+            crpt_x, crpt_y = [], []
 
-            for w in d:
+            for w in seq:
                 if w < self.n_item_x:
-                    x_corrupt.append(w)
-                    xd.append(w)
+                    crpt_x.append(w)
+                    seq_x.append(w)
                     pos_x.append(x_count)
                     x_count += 1
-                    y_corrupt.append(random.randint(0, self.n_item_x - 1))
-                    yd.append(self.n_item_x + self.n_item_y)
+                    crpt_y.append(random.randint(0, self.n_item_x - 1))
+                    seq_y.append(self.idx_pad)
                     pos_y.append(0)
 
                 else:
-                    x_corrupt.append(random.randint(self.n_item_x, self.n_item_x + self.n_item_y - 1))
-                    xd.append(self.n_item_x + self.n_item_y)
+                    crpt_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
+                    seq_x.append(self.idx_pad)
                     pos_x.append(0)
-                    y_corrupt.append(w)
-                    yd.append(w)
+                    crpt_y.append(w)
+                    seq_y.append(w)
                     pos_y.append(y_count)
                     y_count += 1
 
             now = -1
-            x_gt = [self.n_item_x] * len(xd)  # caution!
-            x_gt_mask = [0] * len(xd)
-            for i in range(1, len(xd)+1):
+            x_gt = [self.n_item_x] * len(seq_x)  # caution!
+            gt_mask_x = [0] * len(seq_x)
+            for i in range(1, len(seq_x)+1):
                 if pos_x[-i]:
                     if now == -1:
-                        now = xd[-i]
+                        now = seq_x[-i]
                         if gt[-1] < self.n_item_x:
                             x_gt[-i] = gt[-1]
-                            x_gt_mask[-i] = 1
+                            gt_mask_x[-i] = 1
                         else:
-                            xd[-i] = self.n_item_x + self.n_item_y
+                            seq_x[-i] = self.idx_pad
                             pos_x[-i] = 0
                     else:
                         x_gt[-i] = now
-                        x_gt_mask[-i] = 1
-                        now = xd[-i]
-            if sum(x_gt_mask) == 0:
+                        gt_mask_x[-i] = 1
+                        now = seq_x[-i]
+            if sum(gt_mask_x) == 0:
                 continue
 
             now = -1
-            y_gt = [self.n_item_y] * len(yd)  # caution!
-            y_gt_mask = [0] * len(yd)
-            for i in range(1, len(yd)+1):
+            y_gt = [self.n_item_y] * len(seq_y)  # caution!
+            gt_mask_y = [0] * len(seq_y)
+            for i in range(1, len(seq_y)+1):
                 if pos_y[-i]:
                     if now == -1:
-                        now = yd[-i] - self.n_item_x
+                        now = seq_y[-i] - self.n_item_x
                         if gt[-1] > self.n_item_x:
                             y_gt[-i] = gt[-1] - self.n_item_x
-                            y_gt_mask[-i] = 1
+                            gt_mask_y[-i] = 1
                         else:
-                            yd[-i] = self.n_item_x + self.n_item_y
+                            seq_y[-i] = self.idx_pad
                             pos_y[-i] = 0
                     else:
                         y_gt[-i] = now
-                        y_gt_mask[-i] = 1
-                        now = yd[-i] - self.n_item_x
-            if sum(y_gt_mask) == 0:
+                        gt_mask_y[-i] = 1
+                        now = seq_y[-i] - self.n_item_x
+            if sum(gt_mask_y) == 0:
                 continue
 
-            if len(d) < self.len_max:
-                pos = [0] * (self.len_max - len(d)) + pos
-                pos_x = [0] * (self.len_max - len(d)) + pos_x
-                pos_y = [0] * (self.len_max - len(d)) + pos_y
+            if len(seq) < self.len_max:
+                pos = [0] * (self.len_max - len(seq)) + pos
+                pos_x = [0] * (self.len_max - len(seq)) + pos_x
+                pos_y = [0] * (self.len_max - len(seq)) + pos_y
 
-                gt = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + gt
-                share_x_gt = [self.n_item_x] * (self.len_max - len(d)) + share_x_gt
-                share_y_gt = [self.n_item_y] * (self.len_max - len(d)) + share_y_gt
-                x_gt = [self.n_item_x] * (self.len_max - len(d)) + x_gt
-                y_gt = [self.n_item_y] * (self.len_max - len(d)) + y_gt
+                gt = [self.idx_pad] * (self.len_max - len(seq)) + gt
+                gt_share_x = [self.n_item_x] * (self.len_max - len(seq)) + gt_share_x
+                gt_share_y = [self.n_item_y] * (self.len_max - len(seq)) + gt_share_y
+                x_gt = [self.n_item_x] * (self.len_max - len(seq)) + x_gt
+                y_gt = [self.n_item_y] * (self.len_max - len(seq)) + y_gt
 
-                gt_mask = [0] * (self.len_max - len(d)) + gt_mask
-                share_x_gt_mask = [0] * (self.len_max - len(d)) + share_x_gt_mask
-                share_y_gt_mask = [0] * (self.len_max - len(d)) + share_y_gt_mask
-                x_gt_mask = [0] * (self.len_max - len(d)) + x_gt_mask
-                y_gt_mask = [0] * (self.len_max - len(d)) + y_gt_mask
+                gt_mask = [0] * (self.len_max - len(seq)) + gt_mask
+                gt_mask_share_x = [0] * (self.len_max - len(seq)) + gt_mask_share_x
+                gt_mask_share_y = [0] * (self.len_max - len(seq)) + gt_mask_share_y
+                gt_mask_x = [0] * (self.len_max - len(seq)) + gt_mask_x
+                gt_mask_y = [0] * (self.len_max - len(seq)) + gt_mask_y
 
-                x_corrupt = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + x_corrupt
-                y_corrupt = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + y_corrupt
-                xd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + xd
-                yd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + yd
-                d = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + d
+                crpt_x = [self.idx_pad] * (self.len_max - len(seq)) + crpt_x
+                crpt_y = [self.idx_pad] * (self.len_max - len(seq)) + crpt_y
+                seq_x = [self.idx_pad] * (self.len_max - len(seq)) + seq_x
+                seq_y = [self.idx_pad] * (self.len_max - len(seq)) + seq_y
+                seq = [self.idx_pad] * (self.len_max - len(seq)) + seq
 
-            processed.append([d, xd, yd, pos, pos_x, pos_y, gt, share_x_gt, share_y_gt, x_gt, y_gt, gt_mask,
-                              share_x_gt_mask, share_y_gt_mask, x_gt_mask, y_gt_mask, x_corrupt, y_corrupt])
+            processed.append([seq, seq_x, seq_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, x_gt, y_gt, gt_mask,
+                              gt_mask_share_x, gt_mask_share_y, gt_mask_x, gt_mask_y, crpt_x, crpt_y])
         return processed
 
     def preprocess_evaluate(self, data):
         processed = []
-        for d in data:  # the pad is needed! but to be careful.
-            pos = list(range(len(d[0])+1))[1:]
-            xd, x_count, pos_x = [], 1, []
-            yd, y_count, pos_y = [], 1, []
+        for [seq, XorY, gt] in data:
+            len_seq = len(seq)
+            pos = list(range(len_seq+1))[1:]
+            seq_x, x_count, pos_x = [], 1, []
+            seq_y, y_count, pos_y = [], 1, []
 
-            for w in d[0]:
+            for w in seq:
                 if w < self.n_item_x:
-                    xd.append(w)
+                    seq_x.append(w)
                     pos_x.append(x_count)
                     x_count += 1
-                    yd.append(self.n_item_x + self.n_item_y)
+                    seq_y.append(self.idx_pad)
                     pos_y.append(0)
 
                 else:
-                    xd.append(self.n_item_x + self.n_item_y)
+                    seq_x.append(self.idx_pad)
                     pos_x.append(0)
-                    yd.append(w)
+                    seq_y.append(w)
                     pos_y.append(y_count)
                     y_count += 1
 
-            if len(d[0]) < self.len_max:
-                pos = [0] * (self.len_max - len(d[0])) + pos
-                pos_x = [0] * (self.len_max - len(d[0])) + pos_x
-                pos_y = [0] * (self.len_max - len(d[0])) + pos_y
+            if len_seq < self.len_max:
+                pos = [0] * (self.len_max - len_seq) + pos
+                pos_x = [0] * (self.len_max - len_seq) + pos_x
+                pos_y = [0] * (self.len_max - len_seq) + pos_y
 
-                xd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d[0])) + xd
-                yd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d[0])) + yd
-                seq = [self.n_item_x + self.n_item_y]*(self.len_max - len(d[0])) + d[0]
+                seq_x = [self.idx_pad] * (self.len_max - len_seq) + seq_x
+                seq_y = [self.idx_pad] * (self.len_max - len_seq) + seq_y
+                seq = [self.idx_pad]*(self.len_max - len_seq) + seq
 
-            x_last = -1
+            gt_x = -1
             for i in range(1, len(pos_x)+1):
                 if pos_x[-i]:
-                    x_last = -i
+                    gt_x = -i
                     break
 
-            y_last = -1
+            gt_y = -1
             for i in range(1, len(pos_y)+1):
                 if pos_y[-i]:
-                    y_last = -i
+                    gt_y = -i
                     break
 
-            neg_samples = []
-            for i in range(999):  # need re-format
-                while True:
-                    if d[1]:  # in Y domain, the validation/test negative samples
-                        sample = random.randint(0, self.n_item_y - 1)
-                        if sample != d[2] - self.n_item_x:
-                            neg_samples.append(sample)
-                            break
-                    else:  # in X domain, the validation/test negative samples
-                        sample = random.randint(0, self.n_item_x - 1)
-                        if sample != d[2]:
-                            neg_samples.append(sample)
-                            break
+            if XorY:  # XorY == 1
+                idx_neg = random.sample(list(range(0, gt - self.n_item_x)) +
+                                        list(range(gt - self.n_item_x + 1, self.n_item_y - 1)), self.n_neg_sample)
+                processed.append([seq, seq_x, seq_y, pos, pos_x, pos_y, gt_x, gt_y, XorY, gt - self.n_item_x, idx_neg])
 
-            if d[1]:
-                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1], d[2]-self.n_item_x, neg_samples])
-            else:
-                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1], d[2], neg_samples])
+            else:  # XorY == 0
+                idx_neg = random.sample(list(range(0, gt)) +
+                                        list(range(gt + 1, self.n_item_x - 1)), self.n_neg_sample)
+                processed.append([seq, seq_x, seq_y, pos, pos_x, pos_y, gt_x, gt_y, XorY, gt, idx_neg])
+
         return processed
 
     def __len__(self):
@@ -271,7 +271,7 @@ def get_dataloader(args):
 
     trainloader = DataLoader(CDSRDataset(args, mode='train'), batch_size=args.batch_size, shuffle=True,
                              num_workers=args.num_workers)
-    valloader = DataLoader(CDSRDataset(args, mode='val'), batch_size=64, shuffle=False, num_workers=args.num_workers)
-    testloader = DataLoader(CDSRDataset(args, mode='test'), batch_size=64, shuffle=False, num_workers=args.num_workers)
+    valloader = DataLoader(CDSRDataset(args, mode='val'), batch_size=args.batch_size_eval, shuffle=False, num_workers=args.num_workers)
+    testloader = DataLoader(CDSRDataset(args, mode='test'), batch_size=args.batch_size_eval, shuffle=False, num_workers=args.num_workers)
 
     return trainloader, valloader, testloader

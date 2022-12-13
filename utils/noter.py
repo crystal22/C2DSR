@@ -11,9 +11,10 @@ class Noter(object):
         self.cuda = args.cuda
         self.dataset = args.dataset
         self.n_gnn = args.n_gnn
+        self.dropout_gnn = args.dropout_gnn
         self.n_attn = args.n_attn
         self.n_head = args.n_head
-        self.dropout = args.dropout
+        self.dropout_attn = args.dropout_attn
         self.weight_decay = args.weight_decay
 
         self.f_log = join(args.path_log, time.strftime('%m-%d-%H:%M-', time.localtime()) + args.dataset + '-' +
@@ -22,7 +23,7 @@ class Noter(object):
         if os.path.exists(self.f_log):
             os.remove(self.f_log)  # remove the existing file if duplicate
 
-        self.welcome = ('-' * 20 + ' Experiment starts ' + '-' * 20)
+        self.welcome = ('-' * 20 + ' Experiment starts ' + '-' * 20 + '\n')
         print('\n' + self.welcome)
 
     # write into log file
@@ -38,8 +39,9 @@ class Noter(object):
     # print and save experiment briefs
     def log_brief(self):
         msg = f'\n[Info] Experiment (dataset:{self.dataset}, cuda:{self.cuda}) ' \
-              f'\n\t| n_gnn {self.n_gnn} | n_attn {self.n_attn} | n_head {self.n_head} | dropout {self.dropout} |' \
-              f'\n\t| weight_decay {self.weight_decay} |'
+              f'\n\t| n_gnn  {self.n_gnn} | dropout {self.dropout_gnn} |' \
+              f'\n\t| n_attn {self.n_attn} | dropout {self.dropout_attn} | n_head {self.n_head} |' \
+              f'\n\t| weight_decay {self.weight_decay:.2e} |'
         print(msg)
         self.write(self.welcome + '\n' + msg)
 
@@ -51,8 +53,8 @@ class Noter(object):
         self.write(info + '\n')
 
     # print and save train phase result
-    def log_train(self, loss, loss_rec, loss_jump, t_gap):
-        msg = (f'\t| train | loss {loss:.4f} | loss_rec {loss_rec:.4f} | loss_jump {loss_jump:.4f} '
+    def log_train(self, loss, t_gap):
+        msg = (f'\t| train | loss {loss[0]:.4f} | loss_rec {loss[1]:.4f} | loss_mi {loss[2]:.4f} '
                f'| time {t_gap:.1f}s |')
         print(msg)
         self.write(msg)

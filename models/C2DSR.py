@@ -38,38 +38,34 @@ class C2DSR(torch.nn.Module):
             self.embed_i_x = self.embed_i
             self.embed_i_y = self.embed_i
         else:
-            self.embed_i_x = torch.nn.Embedding(self.n_item+1, self.d_latent, padding_idx=self.n_item - 1)
-            self.embed_i_y = torch.nn.Embedding(self.n_item+2, self.d_latent, padding_idx=self.n_item - 1)
+            self.embed_i_x = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
+            self.embed_i_y = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
 
-        self.encoder_gnn_x = GCN(args)
-        self.encoder_gnn_y = GCN(args)
-        self.encoder_gnn = GCN(args)
+        self.gnn_share = GCN(args)
+        self.gnn_x = GCN(args)
+        self.gnn_y = GCN(args)
+
+        self.attn_share = SelfAttention(self.args)
+        self.attn_x = SelfAttention(self.args)
+        self.attn_y = SelfAttention(self.args)
 
         self.lin_X = nn.Linear(self.d_latent, self.n_item_x)
         self.lin_Y = nn.Linear(self.d_latent, self.n_item_y)
         self.lin_PAD = nn.Linear(self.d_latent, 1)
 
-        self.encoder_attn = SelfAttention(self.args)
-        self.encoder_attn_x = SelfAttention(self.args)
-        self.encoder_attn_y = SelfAttention(self.args)
-
         self.D_X = Discriminator(self.d_latent, self.d_latent)
         self.D_Y = Discriminator(self.d_latent, self.d_latent)
-
-        idx_i = torch.arange(0, self.n_item, 1)
-        idx_i_x = torch.arange(0, self.n_item_x, 1)
-        idx_i_y = torch.arange(self.n_item_x, self.n_item_x + self.n_item_y, 1)
-
-        self.register_buffer('idx_i', idx_i)
-        self.register_buffer('idx_i_x', idx_i_x)
-        self.register_buffer('idx_i_y', idx_i_y)
 
         self.hi_share, self.hi_x, self.hi_y = None, None, None
 
     def convolve_graph(self):
-        self.hi_share = self.encoder_gnn(self.embed_i(self.idx_i), self.adj_share)
-        self.hi_x = self.encoder_gnn_x(self.embed_i_x(self.idx_i), self.adj_specific)
-        self.hi_y = self.encoder_gnn_y(self.embed_i_y(self.idx_i), self.adj_specific)
+        self.hi_share = self.gnn_share(self.embed_i.weight, self.adj_share)
+        self.hi_x = self.gnn_x(self.embed_i_x.weight, self.adj_specific)
+        self.hi_y = self.gnn_y(self.embed_i_y.weight, self.adj_specific)
+
+        # self.hi_share = self.embed_i.weight
+        # self.hi_x = self.embed_i_x.weight
+        # self.hi_y = self.embed_i_y.weight
 
     def forward(self, seq, seq_x, seq_y, pos, pos_x, pos_y):
         seq_gnn_enc = F.embedding(seq, self.hi_share) + self.embed_i(seq)
@@ -80,15 +76,15 @@ class C2DSR(torch.nn.Module):
         seq_gnn_enc_x *= self.d_latent ** 0.5
         seq_gnn_enc_y *= self.d_latent ** 0.5
 
-        seq_attn_enc = self.encoder_attn(seq, seq_gnn_enc, pos)
-        seq_attn_enc_x = self.encoder_attn_x(seq_x, seq_gnn_enc_x, pos_x)
-        seq_attn_enc_y = self.encoder_attn_y(seq_y, seq_gnn_enc_y, pos_y)
+        seq_attn_enc = self.attn_share(seq, seq_gnn_enc, pos)
+        seq_attn_enc_x = self.attn_x(seq_x, seq_gnn_enc_x, pos_x)
+        seq_attn_enc_y = self.attn_y(seq_y, seq_gnn_enc_y, pos_y)
 
         return seq_attn_enc, seq_attn_enc_x, seq_attn_enc_y
 
     def forward_negative(self, seq_neg, pos):
         seq_gnn_enc_neg = F.embedding(seq_neg, self.hi_share) + self.embed_i(seq_neg)
         seq_gnn_enc_neg *= self.d_latent ** 0.5
-        seq_attn_enc_neg = self.encoder_attn(seq_neg, seq_gnn_enc_neg, pos)
+        seq_attn_enc_neg = self.attn_share(seq_neg, seq_gnn_enc_neg, pos)
 
         return seq_attn_enc_neg

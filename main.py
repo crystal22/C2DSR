@@ -1,5 +1,6 @@
 import os
 from os.path import join
+import time
 import argparse
 import numpy as np
 import random
@@ -18,24 +19,27 @@ def main():
     parser.add_argument('--data', type=str, default='ee', help='fk: Food-Kitchen'
                                                                'mb: Movie-Book'
                                                                'ee: Entertainment-Education')
+    parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
-    parser.add_argument('--d_latent', type=int, default=128, help='dimension of latent representation')
+    parser.add_argument('--d_latent', type=int, default=256, help='dimension of latent representation')
     parser.add_argument('--disable_embed_l2', action='store_true', help='disable l2 regularization on embedding')
     parser.add_argument('--shared_item_embed', action='store_true',
                         help='shared item embedding for a, b and merged domains')
 
     # GNN
     parser.add_argument('--n_gnn', type=int, default=1, help='# layer of GNN implemented')
+    parser.add_argument('--dropout_gnn', type=float, default=0.2, help='dropout rate for gnn')
 
     # Transformer
     parser.add_argument('--n_attn', type=int, default=2, help='# layer of TransformerEncoderLayer stack')
     parser.add_argument('--n_head', type=int, default=1, help='# multi-head for self-attention')
-    parser.add_argument('--dropout', type=float, default=0.2, help='dropout rate in Transformer')
+    parser.add_argument('--dropout_attn', type=float, default=0.2, help='dropout rate for Transformer')
     parser.add_argument('--norm_first', action='store_true', help='pre norm on Transformer encoder')
 
     # optimizer
@@ -55,7 +59,8 @@ def main():
 
     # train part
     parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=4, help='size of batch')
+    parser.add_argument('--batch_size', type=int, default=1, help='size of batch for training')
+    parser.add_argument('--batch_size_eval', type=int, default=1024, help='size of batch for evaluation')
     parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--cuda', type=str, default='0', help='running device')
@@ -112,9 +117,11 @@ def main():
 
     for epoch in range(1, args.n_epoch + 1):
         noter.log_msg(f'\n[Epoch {epoch}]')
+        t_start = time.time()
 
         loss_tr, pred_val_x, pred_val_y, pred_test_x, pred_test_y = trainer.run_epoch()
         res_val_x, res_val_y = cal_score(pred_val_x), cal_score(pred_val_y)
+        t_gap = time.time() - t_start
 
         msg_best = ''
         if res_val_x[0] > mrr_val_best_x or res_val_y[0] > mrr_val_best_y:
@@ -134,6 +141,7 @@ def main():
 
         scheduler.step()
 
+        noter.log_train(loss_tr, t_gap)
         if len(msg_best) > 0:
             noter.log_evaluate('\t| test  | new |' + msg_best, res_test_epoch)
 
