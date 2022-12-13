@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description='C2DSR')
 
     # Experiment
-    parser.add_argument('--data', type=str, default='mb', help='fk: Food-Kitchen'
+    parser.add_argument('--data', type=str, default='ee', help='fk: Food-Kitchen'
                                                                'mb: Movie-Book'
                                                                'ee: Entertainment-Education')
 

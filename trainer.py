@@ -14,10 +14,10 @@ class Trainer(object):
         print('Loading data..')
         self.trainloader, self.valloader, self.testloader = get_dataloader(args)
         print('Loading graphs..')
-        self.adj, self.adj_single = make_graph(args, join(args.path_raw, 'train_new.txt'))
+        self.adj_share, self.adj_specific = make_graph(args, join(args.path_raw, 'train_new.txt'))
         print('Finish loading data and graphs.')
 
-        self.model = C2DSR(args, self.adj, self.adj_single).to(args.device)
+        self.model = C2DSR(args, self.adj_share, self.adj_specific).to(args.device)
         self.optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, self.model.parameters()), lr=args.lr,
                                           weight_decay=args.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=args.lr_step, gamma=args.lr_gamma)
@@ -79,8 +79,8 @@ class Trainer(object):
 
         seq_enc, seq_enc_x, seq_enc_y = self.model(seq, seq_x, seq_y, pos, pos_x, pos_y)
 
-        crpt_enc_x = self.model.false_forward(crpt_x, pos)
-        crpt_enc_y = self.model.false_forward(crpt_y, pos)
+        crpt_enc_x = self.model.forward_negative(crpt_x, pos)
+        crpt_enc_y = self.model.forward_negative(crpt_y, pos)
 
         #
         mask_x = self.cal_mask(gt_mask_x, seq_enc)

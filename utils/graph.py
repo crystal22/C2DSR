@@ -49,18 +49,18 @@ def preprocess_graph(args, filename):
     VV_edges = []
     VV_edges_single = []
 
-    real_adj = {}
+    real_adj_share = {}
 
     for seq in train_data:
         source = -1
         target = -1
         pre = -1
         for d in seq:
-            if d not in real_adj:
-                real_adj[d] = set()
+            if d not in real_adj_share:
+                real_adj_share[d] = set()
             if d < args.n_item_x:
                 if source != -1:
-                    if d in real_adj[source]:
+                    if d in real_adj_share[source]:
                         continue
                     else:
                         VV_edges_single.append([source, d])
@@ -68,14 +68,14 @@ def preprocess_graph(args, filename):
 
             else :
                 if target != -1:
-                    if d in real_adj[target]:
+                    if d in real_adj_share[target]:
                         continue
                     else:
                         VV_edges_single.append([target, d])
                 target = d
 
             if pre != -1:
-                if d in real_adj[pre]:
+                if d in real_adj_share[pre]:
                     continue
                 VV_edges.append([pre, d])
             pre=d
@@ -83,28 +83,28 @@ def preprocess_graph(args, filename):
     VV_edges = np.array(VV_edges)
     VV_edges_single = np.array(VV_edges_single)
 
-    adj = sp.coo_matrix((np.ones(VV_edges.shape[0]), (VV_edges[:, 0], VV_edges[:, 1])),
+    adj_share = sp.coo_matrix((np.ones(VV_edges.shape[0]), (VV_edges[:, 0], VV_edges[:, 1])),
                         shape=(args.n_item, args.n_item), dtype=np.float32)
-    adj_single = sp.coo_matrix((np.ones(VV_edges_single.shape[0]), (VV_edges_single[:, 0], VV_edges_single[:, 1])),
+    adj_specific = sp.coo_matrix((np.ones(VV_edges_single.shape[0]), (VV_edges_single[:, 0], VV_edges_single[:, 1])),
                                shape=(args.n_item, args.n_item), dtype=np.float32)
 
-    adj = normalize(adj)
-    adj_single = normalize(adj_single)
-    adj = sparse_mx_to_torch_sparse_tensor(adj)
-    adj_single = sparse_mx_to_torch_sparse_tensor(adj_single)
+    adj_share = normalize(adj_share)
+    adj_specific = normalize(adj_specific)
+    adj_share = sparse_mx_to_torch_sparse_tensor(adj_share)
+    adj_specific = sparse_mx_to_torch_sparse_tensor(adj_specific)
 
     print('real graph loaded!')
-    return adj, adj_single
+    return adj_share, adj_specific
 
 
 def make_graph(args, filename):
     if args.use_raw:
-        adj, adj_single = preprocess_graph(args, filename)
+        adj_share, adj_specific = preprocess_graph(args, filename)
         if args.save_processed:
             with open(join(args.path_data, 'graph.pkl'), 'wb') as f:
-                pickle.dump((adj, adj_single), f)
+                pickle.dump((adj_share, adj_specific), f)
     else:
         with open(join(args.path_data, 'graph.pkl'), 'rb') as f:
-            (adj, adj_single) = pickle.load(f)
+            (adj_share, adj_specific) = pickle.load(f)
 
-    return adj.to(args.device), adj_single.to(args.device)
+    return adj_share.to(args.device), adj_specific.to(args.device)
