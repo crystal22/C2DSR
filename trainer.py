@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from dataloader2 import get_dataloader
+from dataloader import get_dataloader
 from models.C2DSR import C2DSR
 from utils.graph import make_graph
 

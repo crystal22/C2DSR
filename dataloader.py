@@ -4,12 +4,10 @@ import codecs
 import pickle
 import copy
 import torch
+from torch.utils.data import Dataset, DataLoader
 
 
-class DataLoader(object):
-    """
-    Load data from json files, preprocess and prepare batches.
-    """
+class CDSRDataset(Dataset):
     def __init__(self, args, mode):
         self.mode = mode
         self.batch_size = args.batch_size
@@ -18,27 +16,19 @@ class DataLoader(object):
         self.n_item_y = args.n_item_y
         self.len_max = args.len_max
 
-        if args.raw_data:
+        if args.use_raw:
             if mode == 'train':
-                self.data = self.read_raw(join(args.path_raw, mode + '_new.txt'), is_train=True)
-                data = self.preprocess_train()
+                data = self.read_raw(join(args.path_raw, mode + '_new.txt'), is_train=True)
+                self.data = self.preprocess_train(data)
             else:
-                self.data = self.read_raw(join(args.path_raw, mode + '_new.txt'), is_train=False)
-                data = self.preprocess_evaluate()
+                data = self.read_raw(join(args.path_raw, mode + '_new.txt'), is_train=False)
+                self.data = self.preprocess_evaluate(data)
             if args.save_processed:
                 with open(join(args.path_data, mode + '.pkl'), 'wb') as f:
-                    pickle.dump(data, f)
+                    pickle.dump(self.data, f)
         else:
             with open(join(args.path_data, mode + '.pkl'), 'rb') as f:
-                data = pickle.load(f)
-
-        if self.mode == 'train':
-            data = shuffle(data, self.batch_size)
-        else:
-            assert self.mode in ['val', 'test']
-            self.batch_size = 2048
-
-        self.data = [data[i:i + self.batch_size] for i in range(0, len(data), self.batch_size)]
+                self.data = pickle.load(f)
 
     def read_raw(self, path_file, is_train=True):
         def takeSecond(elem):
@@ -67,13 +57,11 @@ class DataLoader(object):
                     data.append(res_2)
         return data
 
-    def preprocess_train(self):
+    def preprocess_train(self, data):
         """ Preprocess the data and convert to ids. """
         processed = []
-        for d in self.data:  # the pad is needed! but to be careful.
-
+        for d in data:  # the pad is needed! but to be careful.
             gt = copy.deepcopy(d)[1:]
-
             share_x_gt, share_y_gt, share_x_gt_mask, share_y_gt_mask = [], [], [], []
             for w in gt:
                 if w < self.n_item_x:
@@ -117,45 +105,41 @@ class DataLoader(object):
             now = -1
             x_gt = [self.n_item_x] * len(xd)  # caution!
             x_gt_mask = [0] * len(xd)
-            for id in range(len(xd)):
-                id+=1
-                if pos_x[-id]:
+            for i in range(1, len(xd)+1):
+                if pos_x[-i]:
                     if now == -1:
-                        now = xd[-id]
+                        now = xd[-i]
                         if gt[-1] < self.n_item_x:
-                            x_gt[-id] = gt[-1]
-                            x_gt_mask[-id] = 1
+                            x_gt[-i] = gt[-1]
+                            x_gt_mask[-i] = 1
                         else:
-                            xd[-id] = self.n_item_x + self.n_item_y
-                            pos_x[-id] = 0
+                            xd[-i] = self.n_item_x + self.n_item_y
+                            pos_x[-i] = 0
                     else:
-                        x_gt[-id] = now
-                        x_gt_mask[-id] = 1
-                        now = xd[-id]
+                        x_gt[-i] = now
+                        x_gt_mask[-i] = 1
+                        now = xd[-i]
             if sum(x_gt_mask) == 0:
-                print('pass sequence x')
                 continue
 
             now = -1
-            y_gt = [self.n_item_y] * len(yd) # caution!
+            y_gt = [self.n_item_y] * len(yd)  # caution!
             y_gt_mask = [0] * len(yd)
-            for id in range(len(yd)):
-                id+=1
-                if pos_y[-id]:
+            for i in range(1, len(yd)+1):
+                if pos_y[-i]:
                     if now == -1:
-                        now = yd[-id] - self.n_item_x
+                        now = yd[-i] - self.n_item_x
                         if gt[-1] > self.n_item_x:
-                            y_gt[-id] = gt[-1] - self.n_item_x
-                            y_gt_mask[-id] = 1
+                            y_gt[-i] = gt[-1] - self.n_item_x
+                            y_gt_mask[-i] = 1
                         else:
-                            yd[-id] = self.n_item_x + self.n_item_y
-                            pos_y[-id] = 0
+                            yd[-i] = self.n_item_x + self.n_item_y
+                            pos_y[-i] = 0
                     else:
-                        y_gt[-id] = now
-                        y_gt_mask[-id] = 1
-                        now = yd[-id] - self.n_item_x
+                        y_gt[-i] = now
+                        y_gt_mask[-i] = 1
+                        now = yd[-i] - self.n_item_x
             if sum(y_gt_mask) == 0:
-                print('pass sequence y')
                 continue
 
             if len(d) < self.len_max:
@@ -180,15 +164,14 @@ class DataLoader(object):
                 xd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + xd
                 yd = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + yd
                 d = [self.n_item_x + self.n_item_y] * (self.len_max - len(d)) + d
-            else:
-                print('pass')
 
-            processed.append([d, xd, yd, pos, pos_x, pos_y, gt, share_x_gt, share_y_gt, x_gt, y_gt, gt_mask, share_x_gt_mask, share_y_gt_mask, x_gt_mask, y_gt_mask, x_corrupt, y_corrupt])
+            processed.append([d, xd, yd, pos, pos_x, pos_y, gt, share_x_gt, share_y_gt, x_gt, y_gt, gt_mask,
+                              share_x_gt_mask, share_y_gt_mask, x_gt_mask, y_gt_mask, x_corrupt, y_corrupt])
         return processed
 
-    def preprocess_evaluate(self):
+    def preprocess_evaluate(self, data):
         processed = []
-        for d in self.data:  # the pad is needed! but to be careful.
+        for d in data:  # the pad is needed! but to be careful.
             pos = list(range(len(d[0])+1))[1:]
             xd, x_count, pos_x = [], 1, []
             yd, y_count, pos_y = [], 1, []
@@ -218,38 +201,35 @@ class DataLoader(object):
                 seq = [self.n_item_x + self.n_item_y]*(self.len_max - len(d[0])) + d[0]
 
             x_last = -1
-            for id in range(len(pos_x)):
-                id += 1
-                if pos_x[-id]:
-                    x_last = -id
+            for i in range(1, len(pos_x)+1):
+                if pos_x[-i]:
+                    x_last = -i
                     break
 
             y_last = -1
-            for id in range(len(pos_y)):
-                id += 1
-                if pos_y[-id]:
-                    y_last = -id
+            for i in range(1, len(pos_y)+1):
+                if pos_y[-i]:
+                    y_last = -i
                     break
 
-            negative_sample = []
-            for i in range(999):
+            neg_samples = []
+            for i in range(999):  # need re-format
                 while True:
                     if d[1]:  # in Y domain, the validation/test negative samples
                         sample = random.randint(0, self.n_item_y - 1)
                         if sample != d[2] - self.n_item_x:
-                            negative_sample.append(sample)
+                            neg_samples.append(sample)
                             break
-                    else : # in X domain, the validation/test negative samples
+                    else:  # in X domain, the validation/test negative samples
                         sample = random.randint(0, self.n_item_x - 1)
                         if sample != d[2]:
-                            negative_sample.append(sample)
+                            neg_samples.append(sample)
                             break
 
             if d[1]:
-                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1], d[2]-self.n_item_x, negative_sample])
+                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1], d[2]-self.n_item_x, neg_samples])
             else:
-                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1],
-                                  d[2], negative_sample])
+                processed.append([seq, xd, yd, pos, pos_x, pos_y, x_last, y_last, d[1], d[2], neg_samples])
         return processed
 
     def __len__(self):
@@ -257,32 +237,19 @@ class DataLoader(object):
 
     def __getitem__(self, key):
         """ Get a batch with index. """
-        if not isinstance(key, int):
-            raise TypeError
-        if key < 0 or key >= len(self.data):
-            raise IndexError
-        batch = self.data[key]
-        batch_size = len(batch)
-
+        data = self.data[key]
         if self.mode != 'train':
-            batch = list(zip(*batch))
-            return (torch.LongTensor(batch[0]), torch.LongTensor(batch[1]), torch.LongTensor(batch[2]),
-                    torch.LongTensor(batch[3]), torch.LongTensor(batch[4]), torch.LongTensor(batch[5]),
-                    torch.LongTensor(batch[6]), torch.LongTensor(batch[7]), torch.LongTensor(batch[8]),
-                    torch.LongTensor(batch[9]), torch.LongTensor(batch[10]))
+            return torch.LongTensor(data[0]), torch.LongTensor(data[1]), torch.LongTensor(data[2]),\
+                torch.LongTensor(data[3]), torch.LongTensor(data[4]), torch.LongTensor(data[5]),\
+                torch.LongTensor(data[6]), torch.LongTensor(data[7]), torch.LongTensor(data[8]),\
+                torch.LongTensor(data[9]), torch.LongTensor(data[10])
         else:
-            batch = list(zip(*batch))
-
-            return (torch.LongTensor(batch[0]), torch.LongTensor(batch[1]), torch.LongTensor(batch[2]),
-                    torch.LongTensor(batch[3]), torch.LongTensor(batch[4]), torch.LongTensor(batch[5]),
-                    torch.LongTensor(batch[6]), torch.LongTensor(batch[7]), torch.LongTensor(batch[8]),
-                    torch.LongTensor(batch[9]), torch.LongTensor(batch[10]), torch.LongTensor(batch[11]),
-                    torch.LongTensor(batch[12]), torch.LongTensor(batch[13]), torch.LongTensor(batch[14]),
-                    torch.LongTensor(batch[15]), torch.LongTensor(batch[16]), torch.LongTensor(batch[17]))
-
-    def __iter__(self):
-        for i in range(self.__len__()):
-            yield self.__getitem__(i)
+            return torch.LongTensor(data[0]), torch.LongTensor(data[1]), torch.LongTensor(data[2]),\
+                torch.LongTensor(data[3]), torch.LongTensor(data[4]), torch.LongTensor(data[5]),\
+                torch.LongTensor(data[6]), torch.LongTensor(data[7]), torch.LongTensor(data[8]),\
+                torch.LongTensor(data[9]), torch.LongTensor(data[10]), torch.LongTensor(data[11]),\
+                torch.LongTensor(data[12]), torch.LongTensor(data[13]), torch.LongTensor(data[14]),\
+                torch.LongTensor(data[15]), torch.LongTensor(data[16]), torch.LongTensor(data[17])
 
 
 def count_item(path):
@@ -293,30 +260,18 @@ def count_item(path):
     return count
 
 
-def shuffle(data, batch_size):
-    indices = list(range(len(data)))
-    random.shuffle(indices)
-    data = [data[i] for i in indices]
-
-    if batch_size > len(data):
-        batch_size = len(data)
-        batch_size = batch_size
-
-    if len(data) % batch_size != 0:
-        data += data[:batch_size]
-
-    return data[: (len(data) // batch_size) * batch_size]
-
-
 def get_dataloader(args):
 
-    args.n_item_x = count_item(join(args.path_raw, 'items_x.txt'))
-    args.n_item_y = count_item(join(args.path_raw, 'items_y.txt'))
+    p = args.path_raw if args.use_raw else args.path_data
+
+    args.n_item_x = count_item(join(p, 'items_x.txt'))
+    args.n_item_y = count_item(join(p, 'items_y.txt'))
     args.n_item = args.n_item_x + args.n_item_y + 1  # with padding
     args.idx_pad = args.n_item - 1
 
-    trainloader = DataLoader(args, mode='train')
-    valloader = DataLoader(args, mode='val')
-    testloader = DataLoader(args, mode='test')
+    trainloader = DataLoader(CDSRDataset(args, mode='train'), batch_size=args.batch_size, shuffle=True,
+                             num_workers=args.num_workers)
+    valloader = DataLoader(CDSRDataset(args, mode='val'), batch_size=64, shuffle=False, num_workers=args.num_workers)
+    testloader = DataLoader(CDSRDataset(args, mode='test'), batch_size=64, shuffle=False, num_workers=args.num_workers)
 
     return trainloader, valloader, testloader

@@ -54,11 +54,9 @@ def main():
     parser.add_argument('--lambda_loss', type=float, default=0.7)
 
     # train part
-    parser.add_argument('--n_epoch', type=int, default=100, help='Number of total training epochs.')
-    parser.add_argument('--batch_size', type=int, default=64, help='Training batch size.')
-    parser.add_argument('--save_dir', type=str, default='./saved_models', help='Root dir for saving models.')
-    parser.add_argument('--load', dest='load', action='store_true', default=False, help='Load pretrained model.')
-    parser.add_argument('--model_file', type=str, help='Filename of the pretrained model.')
+    parser.add_argument('--n_epoch', type=int, default=100, help='# epoch maximum')
+    parser.add_argument('--batch_size', type=int, default=64, help='size of batch')
+    parser.add_argument('--num_workers', type=int, default=3, help='# dataloader worker')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--cuda', type=str, default='0', help='running device')
 
