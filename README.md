@@ -2,7 +2,7 @@
 
 This is an unofficial Pytorch implementation of CIKM'22 paper [Contrastive Cross-Domain Sequential Recommendation](https://dl.acm.org/doi/abs/10.1145/3511808.3557262):
 
-The original PyTorch implementation is [here](https://github.com/cjx96/C2DSR).
+The official PyTorch implementation by paper author is [here](https://github.com/cjx96/C2DSR).
 
 
 ## Dataset
