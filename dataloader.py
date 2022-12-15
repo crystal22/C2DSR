@@ -68,13 +68,12 @@ class CDSRDataset(Dataset):
             # extract from sequences
             gt = u_behavior[1:]
             seq_in = u_behavior[:-1]
-            len_in = len(seq_in)
+            len_seq = len(u_behavior)
 
-            gt_mask = [1] * len_in
-            pos = list(range(1, len_in+1))
+            pos = list(range(1, len_seq))
 
-            x_count, seq_in_x, pos_x, seq_crpt_x, gt_share_x, gt_mask_share_x = 1, [], [], [], [], []
-            y_count, seq_in_y, pos_y, seq_crpt_y, gt_share_y, gt_mask_share_y = 1, [], [], [], [], []
+            x_count, seq_in_x, pos_x, seq_crpt_x = 1, [], [], []
+            y_count, seq_in_y, pos_y, seq_crpt_y = 1, [], [], []
 
             for i, idx in enumerate(seq_in):
                 if idx < self.n_item_x:
@@ -86,11 +85,6 @@ class CDSRDataset(Dataset):
                     seq_in_y.append(self.idx_pad)
                     pos_y.append(0)
 
-                    gt_share_x.append(idx)
-                    gt_share_y.append(self.n_item_y)
-                    gt_mask_share_x.append(1)
-                    gt_mask_share_y.append(0)
-
                 else:
                     seq_crpt_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
                     seq_in_x.append(self.idx_pad)
@@ -100,16 +94,11 @@ class CDSRDataset(Dataset):
                     pos_y.append(y_count)
                     y_count += 1
 
-                    gt_share_x.append(self.n_item_x)
-                    gt_share_y.append(idx - self.n_item_x)
-                    gt_mask_share_x.append(0)
-                    gt_mask_share_y.append(1)
-
             # formulate domain-specific sequences, pad for x and y are different with its own length of item set
             gt_x = [self.n_item_x] * len(seq_in_x)
             gt_mask_x = [0] * len(seq_in_x)
             cur = -1
-            for i in range(1, len_in):
+            for i in range(1, len_seq - 1):
                 if pos_x[-i]:  # find last non-pad item
                     if cur == -1:  # fetch ground truth for domain-specific seq and pad it in inputs
                         cur = seq_in_x[-i]
@@ -147,31 +136,31 @@ class CDSRDataset(Dataset):
                 continue
 
             # pad sequence
-            if len_in < self.len_max:
-                pos = [0] * (self.len_max - len_in) + pos
-                pos_x = [0] * (self.len_max - len_in) + pos_x
-                pos_y = [0] * (self.len_max - len_in) + pos_y
+            len_pad = self.len_max - len_seq + 1
 
-                gt = [self.idx_pad] * (self.len_max - len_in) + gt
-                gt_share_x = [self.n_item_x] * (self.len_max - len_in) + gt_share_x
-                gt_share_y = [self.n_item_y] * (self.len_max - len_in) + gt_share_y
-                gt_x = [self.n_item_x] * (self.len_max - len_in) + gt_x
-                gt_y = [self.n_item_y] * (self.len_max - len_in) + gt_y
+            seq_in = [self.idx_pad] * len_pad + seq_in
+            seq_in_x = [self.idx_pad] * len_pad + seq_in_x
+            seq_in_y = [self.idx_pad] * len_pad + seq_in_y
+            seq_crpt_x = [self.idx_pad] * len_pad + seq_crpt_x
+            seq_crpt_y = [self.idx_pad] * len_pad + seq_crpt_y
 
-                gt_mask = [0] * (self.len_max - len_in) + gt_mask
-                gt_mask_share_x = [0] * (self.len_max - len_in) + gt_mask_share_x
-                gt_mask_share_y = [0] * (self.len_max - len_in) + gt_mask_share_y
-                gt_mask_x = [0] * (self.len_max - len_in) + gt_mask_x
-                gt_mask_y = [0] * (self.len_max - len_in) + gt_mask_y
+            pos = [0] * len_pad + pos
+            pos_x = [0] * len_pad + pos_x
+            pos_y = [0] * len_pad + pos_y
 
-                seq_crpt_x = [self.idx_pad] * (self.len_max - len_in) + seq_crpt_x
-                seq_crpt_y = [self.idx_pad] * (self.len_max - len_in) + seq_crpt_y
-                seq_in_x = [self.idx_pad] * (self.len_max - len_in) + seq_in_x
-                seq_in_y = [self.idx_pad] * (self.len_max - len_in) + seq_in_y
-                seq_in = [self.idx_pad] * (self.len_max - len_in) + seq_in
+            # generate ground truth
+            gt = [self.idx_pad] * len_pad + gt
+            gt_share_x = [idx if idx < self.n_item_x else self.n_item_x for idx in gt]
+            gt_share_y = [idx - self.n_item_x if idx >= self.n_item_x else self.n_item_y for idx in gt]
+            gt_x = [self.n_item_x] * len_pad + gt_x
+            gt_y = [self.n_item_y] * len_pad + gt_y
 
-            processed.append([seq_in, seq_in_x, seq_in_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask,
-                              gt_mask_share_x, gt_mask_share_y, gt_mask_x, gt_mask_y, seq_crpt_x, seq_crpt_y])
+            gt_mask = [1] * (len_seq - 1)
+            gt_mask_x = [0] * len_pad + gt_mask_x
+            gt_mask_y = [0] * len_pad + gt_mask_y
+
+            processed.append([seq_in, seq_in_x, seq_in_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y,
+                              gt_mask, gt_mask_x, gt_mask_y, seq_crpt_x, seq_crpt_y])
         return processed
 
     def preprocess_evaluate(self):

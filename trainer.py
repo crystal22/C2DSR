@@ -76,8 +76,8 @@ class Trainer(object):
 
     def train_batch(self, batch):
         # representation learning
-        seq, seq_x, seq_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask, gt_mask_share_x, \
-            gt_mask_share_y, gt_mask_x, gt_mask_y, crpt_x, crpt_y = map(lambda x: x.to(self.device), batch)
+        seq, seq_x, seq_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask, gt_mask_x, gt_mask_y, \
+            crpt_x, crpt_y = map(lambda x: x.to(self.device), batch)
 
         seq_enc, seq_enc_x, seq_enc_y = self.model(seq, seq_x, seq_y, pos, pos_x, pos_y)
 
@@ -119,9 +119,7 @@ class Trainer(object):
 
         # recommendation
         gt_share_x = gt_share_x[:, -self.len_rec:]
-        gt_mask_share_x = gt_mask_share_x[:, -self.len_rec:]
         gt_share_y = gt_share_y[:, -self.len_rec:]
-        gt_mask_share_y = gt_mask_share_y[:, -self.len_rec:]
         gt_x = gt_x[:, -self.len_rec:]
         gt_mask_x = gt_mask_x[:, -self.len_rec:]
         gt_y = gt_y[:, -self.len_rec:]
@@ -147,8 +145,8 @@ class Trainer(object):
         loss_x = F.cross_entropy(res_x.reshape(-1, self.n_item_x + 1), gt_x.reshape(-1))
         loss_y = F.cross_entropy(res_y.reshape(-1, self.n_item_y + 1), gt_y.reshape(-1))
 
-        loss_share_x = (loss_share_x * (gt_mask_share_x.reshape(-1))).mean()
-        loss_share_y = (loss_share_y * (gt_mask_share_y.reshape(-1))).mean()
+        loss_share_x *= (gt_share_x != self.n_item_x).sum() / self.len_rec
+        loss_share_y *= (gt_share_y != self.n_item_y).sum() / self.len_rec
         loss_x = (loss_x * (gt_mask_x.reshape(-1))).mean()
         loss_y = (loss_y * (gt_mask_y.reshape(-1))).mean()
 
