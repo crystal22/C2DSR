@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
@@ -58,12 +58,13 @@ def main():
     parser.add_argument('--lambda_loss', type=float, default=0.7)
 
     # train part
+    parser.add_argument('--cuda', type=str, default='0', help='running device')
+    parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
     parser.add_argument('--batch_size', type=int, default=2, help='size of batch for training')
     parser.add_argument('--batch_size_eval', type=int, default=1024, help='size of batch for evaluation')
     parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
-    parser.add_argument('--seed', type=int, default=3407, help='random seeding')
-    parser.add_argument('--cuda', type=str, default='0', help='running device')
+    parser.add_argument('--es_patience', type=int, default=10)
 
     args = parser.parse_args()
 
@@ -100,10 +101,8 @@ def main():
     # torch.backends.cudnn.benchmark = False
 
     # settings
-    if args.dataset == 'Entertainment-Education':
-        args.len_max = 30
-    else:
-        args.len_max = 15
+    args.len_max = 30 if args.dataset == 'Entertainment-Education' else 15
+    es_counter = 0
 
     # initialize
     noter = Noter(args)
@@ -163,6 +162,17 @@ def main():
             else:
                 noter.log_msg(f'\t| lr    | from {lr_register:.2e} | to {lr_current:.2e} |')
                 lr_register = lr_current
+
+        # early stop: overfitting
+        if not (flag_test_x or flag_test_y):
+            es_counter += 1
+            noter.log_msg(f'\n\t| es    | {es_counter} / {args.es_patience} |')
+        elif es_counter != 0:
+            es_counter = 0
+            noter.log_msg(f'\t| es    | 0 / {args.es_patience} |')
+
+        if es_counter >= args.es_patience:
+            break
 
     noter.log_final_result(epoch, {
         'Best val x': res_best_val_x,
