@@ -1,10 +1,6 @@
 # C2DSR-pytorch
 
-## Current construction
-
 This is an unofficial Pytorch implementation of CIKM'22 paper [Contrastive Cross-Domain Sequential Recommendation](https://dl.acm.org/doi/abs/10.1145/3511808.3557262):
-
-Current under construction.
 
 The original PyTorch implementation is [here](https://github.com/cjx96/C2DSR).
 
@@ -15,15 +11,18 @@ Paper author find the information leak issue from existed datasets which release
 
 Three processed datasets are provided: Amazon - Food & Kitchen, Amazon - Movie & Book and HVIDEO - Entertainment & Education.
 
-I also zip all processed data, see more in `./dataloader/dataset.zip`. Please upzip it at its current folder before use.
+I also zip dataset exceed github file size limit, see more in `./data/`. Please upzip before use.
 
 
-## Experiments
+## ***Known issue***
 
+I have re-written the entire project under my framework without changing logics and main operations. Some issues are found :
 
+- The result metrics are calculated based on samples negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set.
+In other words, the result presented by this code will be better than the reality.
 
 ## Usage
 
 ```shell
-python main.py
+python main.py 
 ```

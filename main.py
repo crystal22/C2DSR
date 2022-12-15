@@ -22,7 +22,7 @@ def main():
 
     # data
     parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
@@ -61,9 +61,9 @@ def main():
     parser.add_argument('--cuda', type=str, default='0', help='running device')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=2, help='size of batch for training')
+    parser.add_argument('--batch_size', type=int, default=512, help='size of batch for training')
     parser.add_argument('--batch_size_eval', type=int, default=1024, help='size of batch for evaluation')
-    parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
+    parser.add_argument('--num_workers', type=int, default=8, help='# dataloader worker')
     parser.add_argument('--es_patience', type=int, default=10)
 
     args = parser.parse_args()
