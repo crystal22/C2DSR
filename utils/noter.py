@@ -53,8 +53,8 @@ class Noter(object):
         self.write(info + '\n')
 
     # print and save train phase result
-    def log_train(self, loss, t_gap):
-        msg = (f'\t| train | loss {loss[0]:.4f} | loss_rec {loss[1]:.4f} | loss_mi {loss[2]:.4f} '
+    def log_train(self, loss_tr, loss_rec, loss_mi, t_gap):
+        msg = (f'\t| train | loss {loss_tr:.4f} | loss_rec {loss_rec:.4f} | loss_mi {loss_mi:.4f} '
                f'| time {t_gap:.1f}s |')
         print(msg)
         self.write(msg)

@@ -87,7 +87,7 @@ class Trainer(object):
 
     def train_batch(self, batch):
         seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask_x, gt_mask_y, \
-            seq_share_neg_x, seq_share_neg_y = batch
+            seq_share_neg_x, seq_share_neg_y = map(lambda x: x.to(self.device), batch)
 
         # representation learning
         h_share_pos, hx_pos, hy_pos = self.model(seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y)
