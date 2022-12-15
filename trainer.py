@@ -78,7 +78,7 @@ class Trainer(object):
         return mask_x
 
     def train_batch(self, batch):
-        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask_x, gt_mask_y, \
+        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask_x, gt_mask_y, \
             seq_share_neg_x, seq_share_neg_y = map(lambda x: x.to(self.device), batch)
 
         # representation learning
@@ -92,20 +92,20 @@ class Trainer(object):
         mask_x = self.cal_mask(gt_mask_x)
         mask_y = self.cal_mask(gt_mask_y)
 
-        hx_pos = (hx_pos * mask_x).sum(1)
-        hy_pos = (hy_pos * mask_y).sum(1)
+        hx_mean_pos = (hx_pos * mask_x).sum(1)
+        hy_mean_pos = (hy_pos * mask_y).sum(1)
 
-        hx_share_pos = (h_share_pos * mask_x).sum(1)
-        hy_share_pos = (h_share_pos * mask_y).sum(1)
+        hx_share_mean_pos = (h_share_pos * mask_x).sum(1)
+        hy_share_mean_pos = (h_share_pos * mask_y).sum(1)
 
-        h_share_neg_x = (h_share_neg_x * mask_x).sum(1)
-        h_share_neg_y = (h_share_neg_y * mask_y).sum(1)
+        h_share_mean_neg_x = (h_share_neg_x * mask_x).sum(1)
+        h_share_mean_neg_y = (h_share_neg_y * mask_y).sum(1)
 
-        sim_x_pos = self.model.D_x(hx_pos, hy_share_pos)
-        sim_x_neg = self.model.D_x(hx_pos, h_share_neg_x)
+        sim_x_pos = self.model.D_x(hx_mean_pos, hy_share_mean_pos)
+        sim_x_neg = self.model.D_x(hx_mean_pos, h_share_mean_neg_x)
 
-        sim_y_pos = self.model.D_y(hy_pos, hx_share_pos)
-        sim_y_neg = self.model.D_y(hy_pos, h_share_neg_y)
+        sim_y_pos = self.model.D_y(hy_mean_pos, hx_share_mean_pos)
+        sim_y_neg = self.model.D_y(hy_mean_pos, h_share_mean_neg_y)
 
         loss_mi_x_pos = F.binary_cross_entropy_with_logits(sim_x_pos, self.label_pos)
         loss_mi_x_neg = F.binary_cross_entropy_with_logits(sim_x_neg, self.label_neg)
@@ -118,31 +118,36 @@ class Trainer(object):
         # recommendation
         gt_mask_x = gt_mask_x[:, -self.len_rec:]
         gt_mask_y = gt_mask_y[:, -self.len_rec:]
+        h_share_rec = h_share_pos[:, -self.len_rec:, :]
+        h_x_rec = hx_pos[:, -self.len_rec:]
+        h_y_rec = hy_pos[:, -self.len_rec:]
+        gt_x = gt_x[:, -self.len_rec:]
+        gt_y = gt_y[:, -self.len_rec:]
 
-        pred_share_x = self.model.classifier_x(h_share_pos[:, -self.len_rec:])
-        pred_share_y = self.model.classifier_y(h_share_pos[:, -self.len_rec:])
-        pred_share_pad = self.model.classifier_pad(h_share_pos[:, -self.len_rec:])
+        pred_share_x = self.model.classifier_x(h_share_rec)
+        pred_share_y = self.model.classifier_y(h_share_rec)
+        pred_share_pad = self.model.classifier_pad(h_share_rec)
 
         pred_share_x = torch.cat((pred_share_x, pred_share_pad), dim=-1)
         pred_share_y = torch.cat((pred_share_y, pred_share_pad), dim=-1)
 
-        pred_x = self.model.classifier_x(h_share_pos[:, -self.len_rec:] + hx_pos[:, -self.len_rec:])
-        pred_x_pad = self.model.classifier_pad(hx_pos[:, -self.len_rec:])
+        pred_x = self.model.classifier_x(h_share_rec + h_x_rec)
+        pred_x_pad = self.model.classifier_pad(h_x_rec)
         pred_x = torch.cat((pred_x, pred_x_pad), dim=-1)
 
-        pred_y = self.model.classifier_y(h_share_pos[:, -self.len_rec:] + hy_pos[:, -self.len_rec:])
-        pred_y_pad = self.model.classifier_pad(hy_pos[:, -self.len_rec:])
+        pred_y = self.model.classifier_y(h_share_rec + h_y_rec)
+        pred_y_pad = self.model.classifier_pad(h_y_rec)
         pred_y = torch.cat((pred_y, pred_y_pad), dim=-1)
 
-        loss_share_x = F.cross_entropy(pred_share_x.reshape(-1, self.n_item_x + 1), gt_share_x.squeeze(0))
-        loss_share_y = F.cross_entropy(pred_share_y.reshape(-1, self.n_item_y + 1), gt_share_y.squeeze(0))
+        loss_share_x = F.cross_entropy(pred_share_x.reshape(-1, self.n_item_x + 1), gt_share_x.reshape(-1))
+        loss_share_y = F.cross_entropy(pred_share_y.reshape(-1, self.n_item_y + 1), gt_share_y.reshape(-1))
 
         loss_x = F.cross_entropy(pred_x.reshape(-1, self.n_item_x + 1), gt_x.reshape(-1))
         loss_y = F.cross_entropy(pred_y.reshape(-1, self.n_item_y + 1), gt_y.reshape(-1))
 
         loss_share_x *= (gt_share_x != self.n_item_x).sum() / self.len_rec
         loss_share_y *= (gt_share_y != self.n_item_y).sum() / self.len_rec
-        loss_x = (loss_x * (gt_mask_x.reshape(-1))).mean()
+        loss_x = (loss_x * (gt_mask_x.reshape(-1))).mean()  # why do that
         loss_y = (loss_y * (gt_mask_y.reshape(-1))).mean()
 
         loss_rec = loss_share_x + loss_share_y + loss_x + loss_y

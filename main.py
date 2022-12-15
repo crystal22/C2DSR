@@ -22,8 +22,8 @@ def main():
     parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
@@ -60,7 +60,7 @@ def main():
 
     # train part
     parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=1, help='size of batch for training')
+    parser.add_argument('--batch_size', type=int, default=64, help='size of batch for training')
     parser.add_argument('--batch_size_eval', type=int, default=1024, help='size of batch for evaluation')
     parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
