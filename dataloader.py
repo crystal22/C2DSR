@@ -1,6 +1,5 @@
 from os.path import join
 import random
-import codecs
 import pickle
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -30,6 +29,7 @@ class CDSRDataset(Dataset):
                 with open(join(args.path_data, mode + '.pkl'), 'wb') as f:
                     pickle.dump(self.data, f)
                 print('Processed ' + mode + ' data saved.')
+
         else:
             with open(join(args.path_data, mode + '.pkl'), 'rb') as f:
                 self.data = pickle.load(f)
@@ -41,7 +41,7 @@ class CDSRDataset(Dataset):
         def takeSecond(elem):
             return elem[1]
 
-        with codecs.open(join(self.path_raw, self.mode + '_new.txt'), 'r', encoding='utf-8') as f:
+        with open(join(self.path_raw, self.mode + '_new.txt'), 'r', encoding='utf-8') as f:
             data = []
             for line in f:
                 seq_ui = []
@@ -236,7 +236,7 @@ class CDSRDataset(Dataset):
 
 def count_item(path):
     count = 0
-    with codecs.open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         for _ in f:
             count += 1
     return count
@@ -257,5 +257,16 @@ def get_dataloader(args):
                            num_workers=args.num_workers)
     testloader = DataLoader(CDSRDataset(args, mode='test'), batch_size=args.batch_size_eval, shuffle=False,
                             num_workers=args.num_workers)
+
+    # zip dataset that exceeds maximum file size for GitHub pushing
+    if args.dataset in ['Entertainment-Education']:
+        import os
+        import zipfile
+        with zipfile.ZipFile(join(args.path_data, f'{args.dataset}.zip'), 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(args.path_data):
+                for file in files:
+                    zipf.write(join(root, file),
+                               os.path.relpath(join(root, file), join(args.path_data, '..')))
+        print(f'Zipped {args.dataset} folder.')
 
     return trainloader, valloader, testloader

@@ -15,14 +15,14 @@ def main():
     parser = argparse.ArgumentParser(description='C2DSR')
 
     # Experiment
-    parser.add_argument('--data', type=str, default='fk', help='fk: Food-Kitchen'
+    parser.add_argument('--data', type=str, default='ee', help='fk: Food-Kitchen'
                                                                'mb: Movie-Book'
                                                                'ee: Entertainment-Education')
     parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
