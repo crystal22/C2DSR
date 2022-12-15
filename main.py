@@ -23,7 +23,7 @@ def main():
 
     # data
     parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model

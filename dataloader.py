@@ -30,7 +30,7 @@ class CDSRDataset(Dataset):
             if args.save_processed:
                 with open(join(args.path_data, mode + '.pkl'), 'wb') as f:
                     pickle.dump(self.data, f)
-                print('Processed ' + mode + 'data saved.')
+                print('Processed ' + mode + ' data saved.')
         else:
             with open(join(args.path_data, mode + '.pkl'), 'rb') as f:
                 self.data = pickle.load(f)
@@ -52,16 +52,10 @@ class CDSRDataset(Dataset):
                     seq_ui.append((int(ui[0]), int(ui[1])))
                 seq_ui.sort(key=takeSecond)
                 seq_i = []
-                for r in seq_ui:
-                    seq_i.append(r[0])
+                for ui in seq_ui:
+                    seq_i.append(ui[0])
 
-                if self.mode == 'train':
-                    data.append(seq_i)
-                else:
-                    if seq_ui[-1][0] >= self.n_item_x:
-                        data.append([seq_i, 1, seq_ui[-1][0]])
-                    else:
-                        data.append([seq_i, 0, seq_ui[-1][0]])
+                data.append(seq_i)
         return data
 
     def preprocess_train(self):
@@ -69,7 +63,6 @@ class CDSRDataset(Dataset):
         data = self.read_raw()
         processed = []
         for u_behavior in data:
-            # extract from sequences
             gt = u_behavior[1:]
             seq_share = u_behavior[:-1]
             len_seq = len(u_behavior)
@@ -170,15 +163,20 @@ class CDSRDataset(Dataset):
         """ Preprocess the raw sequence data for evaluation including validation and testing. """
         data = self.read_raw()
         processed = []
-        for [seq_share, XorY, gt] in data:
-            len_in = len(seq_share)
-            pos = list(range(len_in+1))[1:]
-            seq_share_x, x_count, pos_x = [], 1, []
-            seq_share_y, y_count, pos_y = [], 1, []
+        for u_behavior in data:
+            gt = u_behavior[1:]
+            gt_last = gt[-1]
+            seq_share = u_behavior[:-1]
+            len_seq = len(u_behavior)
 
-            for w in seq_share:
-                if w < self.n_item_x:
-                    seq_share_x.append(w)
+            pos = list(range(1, len_seq))
+
+            x_count, seq_share_x, pos_x = 1, [], []
+            y_count, seq_share_y, pos_y = 1, [], []
+
+            for i, idx in enumerate(seq_share):
+                if idx < self.n_item_x:
+                    seq_share_x.append(idx)
                     pos_x.append(x_count)
                     x_count += 1
                     seq_share_y.append(self.idx_pad)
@@ -187,40 +185,44 @@ class CDSRDataset(Dataset):
                 else:
                     seq_share_x.append(self.idx_pad)
                     pos_x.append(0)
-                    seq_share_y.append(w)
+                    seq_share_y.append(idx)
                     pos_y.append(y_count)
                     y_count += 1
 
-            if len_in < self.len_max:
-                pos = [0] * (self.len_max - len_in) + pos
-                pos_x = [0] * (self.len_max - len_in) + pos_x
-                pos_y = [0] * (self.len_max - len_in) + pos_y
+            # pad sequence
+            len_pad = self.len_max - len_seq + 1
+            pos = [0] * len_pad + pos
+            pos_x = [0] * len_pad + pos_x
+            pos_y = [0] * len_pad + pos_y
 
-                seq_share_x = [self.idx_pad] * (self.len_max - len_in) + seq_share_x
-                seq_share_y = [self.idx_pad] * (self.len_max - len_in) + seq_share_y
-                seq_share = [self.idx_pad]*(self.len_max - len_in) + seq_share
+            seq_share_x = [self.idx_pad] * len_pad + seq_share_x
+            seq_share_y = [self.idx_pad] * len_pad + seq_share_y
+            seq_share = [self.idx_pad] * len_pad + seq_share
 
-            gt_x = -1
-            for i in range(1, len(pos_x)+1):
+            # find last available item as ground truth
+            idx_last_x, idx_last_y = -1, -1
+            for i in range(1, self.len_max+1):
                 if pos_x[-i]:
-                    gt_x = -i
+                    idx_last_x = self.len_max - i
                     break
 
-            gt_y = -1
-            for i in range(1, len(pos_y)+1):
+            for i in range(1, self.len_max+1):
                 if pos_y[-i]:
-                    gt_y = -i
+                    idx_last_y = self.len_max - i
                     break
 
-            if XorY:  # XorY == 1
-                idx_neg = random.sample(list(range(0, gt - self.n_item_x)) +
-                                        list(range(gt - self.n_item_x + 1, self.n_item_y - 1)), self.n_neg_sample)
-                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_x, gt_y, XorY, gt - self.n_item_x, idx_neg])
+            if gt_last < self.n_item_x:
+                list_neg = random.sample(list(range(0, gt_last)) + list(range(gt_last + 1, self.n_item_x - 1)),
+                                         self.n_neg_sample)
+                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, 0,
+                                  gt_last, list_neg])
 
-            else:  # XorY == 0
-                idx_neg = random.sample(list(range(0, gt)) +
-                                        list(range(gt + 1, self.n_item_x - 1)), self.n_neg_sample)
-                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_x, gt_y, XorY, gt, idx_neg])
+            else:
+                list_neg = random.sample(list(range(0, gt_last - self.n_item_x)) +
+                                         list(range(gt_last - self.n_item_x + 1, self.n_item_y - self.n_item_x + 1)),
+                                         self.n_neg_sample)
+                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, 1,
+                                  gt_last - self.n_item_x, list_neg])
 
         return processed
 

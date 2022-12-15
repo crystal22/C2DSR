@@ -44,22 +44,23 @@ class Trainer(object):
         t_start = time.time()
 
         # training phase
-        for batch in tqdm(self.trainloader, desc='  - training', leave=False):
-            self.model.convolve_graph()
-            loss_tr_batch, loss_rec_batch, loss_mi_batch = self.train_batch(batch)
-            loss_tr_epoch += loss_tr_batch.item() * len(batch)
-            loss_rec_epoch += loss_rec_batch.item() * len(batch)
-            loss_mi_epoch += loss_mi_batch.item() * len(batch)
-        loss_tr_epoch /= self.len_train_dl
-        loss_rec_epoch /= self.len_train_dl
-        loss_mi_epoch /= self.len_train_dl
-
-        self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
+        # for batch in tqdm(self.trainloader, desc='  - training', leave=False):
+        #     self.model.convolve_graph()
+        #     loss_tr_batch, loss_rec_batch, loss_mi_batch = self.train_batch(batch)
+        #     loss_tr_epoch += loss_tr_batch.item() * len(batch)
+        #     loss_rec_epoch += loss_rec_batch.item() * len(batch)
+        #     loss_mi_epoch += loss_mi_batch.item() * len(batch)
+        # loss_tr_epoch /= self.len_train_dl
+        # loss_rec_epoch /= self.len_train_dl
+        # loss_mi_epoch /= self.len_train_dl
+        #
+        # self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
 
         # evaluating phase
         self.model.eval()
         pred_val_x, pred_val_y = [], []
         with torch.no_grad():
+            self.model.convolve_graph()
             for batch in tqdm(self.valloader, desc='  - validating', leave=False):
                 pred_x, pred_y = self.evaluate_batch(batch)
                 pred_val_x += pred_x
@@ -135,26 +136,26 @@ class Trainer(object):
         gt_x = gt_x[:, -self.len_rec:]
         gt_y = gt_y[:, -self.len_rec:]
 
-        pred_share_x = self.model.classifier_x(h_share_rec)
-        pred_share_y = self.model.classifier_y(h_share_rec)
-        pred_share_pad = self.model.classifier_pad(h_share_rec)
+        scores_share_x = self.model.classifier_x(h_share_rec)
+        scores_share_y = self.model.classifier_y(h_share_rec)
+        scores_share_pad = self.model.classifier_pad(h_share_rec)
 
-        pred_share_x = torch.cat((pred_share_x, pred_share_pad), dim=-1)
-        pred_share_y = torch.cat((pred_share_y, pred_share_pad), dim=-1)
+        scores_share_x = torch.cat((scores_share_x, scores_share_pad), dim=-1)
+        scores_share_y = torch.cat((scores_share_y, scores_share_pad), dim=-1)
 
-        pred_x = self.model.classifier_x(h_share_rec + h_x_rec)
-        pred_x_pad = self.model.classifier_pad(h_x_rec)
-        pred_x = torch.cat((pred_x, pred_x_pad), dim=-1)
+        scores_x = self.model.classifier_x(h_share_rec + h_x_rec)
+        scores_x_pad = self.model.classifier_pad(h_x_rec)
+        scores_x = torch.cat((scores_x, scores_x_pad), dim=-1)
 
-        pred_y = self.model.classifier_y(h_share_rec + h_y_rec)
-        pred_y_pad = self.model.classifier_pad(h_y_rec)
-        pred_y = torch.cat((pred_y, pred_y_pad), dim=-1)
+        scores_y = self.model.classifier_y(h_share_rec + h_y_rec)
+        scores_y_pad = self.model.classifier_pad(h_y_rec)
+        scores_y = torch.cat((scores_y, scores_y_pad), dim=-1)
 
-        loss_share_x = F.cross_entropy(pred_share_x.reshape(-1, self.n_item_x + 1), gt_share_x.reshape(-1))
-        loss_share_y = F.cross_entropy(pred_share_y.reshape(-1, self.n_item_y + 1), gt_share_y.reshape(-1))
+        loss_share_x = F.cross_entropy(scores_share_x.reshape(-1, self.n_item_x + 1), gt_share_x.reshape(-1))
+        loss_share_y = F.cross_entropy(scores_share_y.reshape(-1, self.n_item_y + 1), gt_share_y.reshape(-1))
 
-        loss_x = F.cross_entropy(pred_x.reshape(-1, self.n_item_x + 1), gt_x.reshape(-1))
-        loss_y = F.cross_entropy(pred_y.reshape(-1, self.n_item_y + 1), gt_y.reshape(-1))
+        loss_x = F.cross_entropy(scores_x.reshape(-1, self.n_item_x + 1), gt_x.reshape(-1))
+        loss_y = F.cross_entropy(scores_y.reshape(-1, self.n_item_y + 1), gt_y.reshape(-1))
 
         loss_share_x *= (gt_share_x != self.n_item_x).sum() / self.len_rec
         loss_share_y *= (gt_share_y != self.n_item_y).sum() / self.len_rec
@@ -170,28 +171,26 @@ class Trainer(object):
         return loss_batch, loss_rec, loss_mi
 
     def evaluate_batch(self, batch):
-        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, X_last, Y_last, XorY, gt, neg_list = \
+        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, xory_last, gt_last, list_neg = \
             map(lambda x: x.to(self.device), batch)
         h_share, hx, hy = self.model(seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y)
 
         pred_x, pred_y = [], []
-        for idx, feat in enumerate(h_share):
-            if XorY[idx] == 0:
-                share_enc = h_share[idx, -1]
-                specific_enc = hx[idx, X_last[idx]]
-                X_score = self.model.classifier_x(share_enc + specific_enc).squeeze(0)
-                cur = X_score[gt[idx]]
-                score_larger = (X_score[neg_list[idx]] > (cur + 0.00001)).data.cpu().numpy()
-                true_item_rank = np.sum(score_larger) + 1
-                pred_x.append(true_item_rank)
+        for i, feat in enumerate(h_share):
+            h_share_last = h_share[i, -1]
 
-            else:
-                share_enc = h_share[idx, -1]
-                specific_enc = hy[idx, Y_last[idx]]
-                score_y = self.model.classifier_y(share_enc + specific_enc).squeeze(0)
-                cur = score_y[gt[idx]]
-                score_larger = (score_y[neg_list[idx]] > (cur + 0.00001)).data.cpu().numpy()
-                true_item_rank = np.sum(score_larger) + 1
-                pred_y.append(true_item_rank)
+            if xory_last[i] == 0:  # gt_last belongs to domain x
+                hx_last = hx[i, idx_last_x[i]]
+                scores_x = self.model.classifier_x(h_share_last + hx_last).squeeze(0)
+
+                score_larger = (scores_x[list_neg[i]] > scores_x[gt_last[i]]).data.cpu().numpy()
+                pred_x.append(np.sum(score_larger) + 1)
+
+            else:  # gt_last belongs to domain y
+                hy_last = hy[i, idx_last_y[i]]
+                scores_y = self.model.classifier_y(h_share_last + hy_last).squeeze(0)
+
+                score_larger = (scores_y[list_neg[i]] > scores_y[gt_last[i]]).data.cpu().numpy()
+                pred_y.append(np.sum(score_larger) + 1)
 
         return pred_x, pred_y
