@@ -124,6 +124,7 @@ def main():
 
         loss_tr, pred_val_x, pred_val_y = trainer.run_epoch()
         res_val_x, res_val_y = cal_score(pred_val_x), cal_score(pred_val_y)
+        res_val_epoch = res_val_x + res_val_y
 
         scheduler.step()
         msg_best_val = ''
@@ -131,34 +132,24 @@ def main():
 
         if res_val_x[0] > mrr_val_best_x:
             mrr_val_best_x = res_val_x[0]
-            msg_best_val += ' x res |'
+            msg_best_val += ' new x res |'
             res_best_val_x = res_val_x + res_val_y
             flag_test_x = True
 
         if res_val_y[0] > mrr_val_best_y:
             mrr_val_best_y = res_val_y[0]
-            msg_best_val += ' y res |'
+            msg_best_val += ' new y res |'
             res_best_val_y = res_val_x + res_val_y
             flag_test_y = True
 
-        if len(msg_best_val) > 0:
-            msg_best_val = ' new |' + msg_best_val
-            if flag_test_x and not flag_test_y:
-                res_test_epoch = res_best_val_x
-            elif flag_test_y and not flag_test_x:
-                res_test_epoch = res_best_val_y
-            else:
-                # assert (flag_test_x and flag_test_y) == True
-                res_test_epoch = res_best_val_x
-
         t_val = time.time()
-        noter.log_evaluate(f'\t| val   | time {t_val - t_start} |' + msg_best_val, res_test_epoch)
+        noter.log_evaluate(f'\t| val   | time {t_val - t_start} |' + msg_best_val, res_val_epoch)
 
         # testing phase
         if flag_test_x or flag_test_y:
             pred_test_x, pred_test_y = trainer.run_test()
             res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
-            noter.log_evaluate(f'\t| test   | time {time.time() - t_val}', res_test_epoch)
+            noter.log_evaluate(f'\t| test   | time {time.time() - t_val}' + msg_best_val, res_test_epoch)
 
             if flag_test_x:
                 res_test_x = res_test_epoch
@@ -175,8 +166,10 @@ def main():
                 lr_register = lr_current
 
     noter.log_final_result(epoch, {
-        'Best x': res_test_x,
-        'Best y': res_test_y
+        'Best val x': res_best_val_x,
+        'Best val y': res_best_val_y,
+        'Best test x': res_test_x,
+        'Best test y': res_test_y
     })
 
 

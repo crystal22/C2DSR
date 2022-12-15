@@ -195,9 +195,9 @@ class CDSRDataset(Dataset):
             pos_x = [0] * len_pad + pos_x
             pos_y = [0] * len_pad + pos_y
 
+            seq_share = [self.idx_pad] * len_pad + seq_share
             seq_share_x = [self.idx_pad] * len_pad + seq_share_x
             seq_share_y = [self.idx_pad] * len_pad + seq_share_y
-            seq_share = [self.idx_pad] * len_pad + seq_share
 
             # find last available item as ground truth
             idx_last_x, idx_last_y = -1, -1
