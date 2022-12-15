@@ -84,9 +84,9 @@ def preprocess_graph(args, filename):
     VV_edges_single = np.array(VV_edges_single)
 
     adj_share = sp.coo_matrix((np.ones(VV_edges.shape[0]), (VV_edges[:, 0], VV_edges[:, 1])),
-                        shape=(args.n_item, args.n_item), dtype=np.float32)
+                              shape=(args.n_item, args.n_item), dtype=np.float32)
     adj_specific = sp.coo_matrix((np.ones(VV_edges_single.shape[0]), (VV_edges_single[:, 0], VV_edges_single[:, 1])),
-                               shape=(args.n_item, args.n_item), dtype=np.float32)
+                                 shape=(args.n_item, args.n_item), dtype=np.float32)
 
     adj_share = normalize(adj_share)
     adj_specific = normalize(adj_specific)
