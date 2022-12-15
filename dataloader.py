@@ -20,7 +20,6 @@ class CDSRDataset(Dataset):
         self.n_neg_sample = args.n_neg_sample
 
         self.len_max = args.len_max
-        self.len_rec = args.len_rec
 
         if args.use_raw:
             if mode == 'train':
@@ -69,9 +68,9 @@ class CDSRDataset(Dataset):
 
             pos = list(range(1, len_seq))
 
+            # split shared seq into domain-specific sequences, which still use indices from the shared-domain.
             x_count, seq_share_x, pos_x, seq_share_neg_x = 1, [], [], []
             y_count, seq_share_y, pos_y, seq_share_neg_y = 1, [], [], []
-
             for i, idx in enumerate(seq_share):
                 if idx < self.n_item_x:
                     seq_share_neg_x.append(idx)
@@ -92,13 +91,16 @@ class CDSRDataset(Dataset):
                     y_count += 1
 
             # formulate domain-specific sequences, pad for x and y are different with its own length of item set
-            gt_x = [self.n_item_x] * len(seq_share_x)
-            gt_mask_x = [0] * len(seq_share_x)
+            gt_x, gt_y = [self.n_item_x] * len(seq_share_x), [self.n_item_y] * len(seq_share_y)
+            gt_mask_x, gt_mask_y = [0] * len(seq_share_x), [0] * len(seq_share_y)
+
             cur = -1
-            for i in range(1, len_seq - 1):
-                if pos_x[-i]:  # find last non-pad item
-                    if cur == -1:  # fetch ground truth for domain-specific seq and pad it in inputs
+            for i in range(1, len_seq):
+                # find last non-pad item in x-domain sequence
+                if pos_x[-i]:
+                    if cur == -1:
                         cur = seq_share_x[-i]
+                        # fetch ground truth for domain-specific seq and pad it in inputs
                         if gt[-1] < self.n_item_x:
                             gt_x[-i] = gt[-1]
                             gt_mask_x[-i] = 1
@@ -106,6 +108,7 @@ class CDSRDataset(Dataset):
                             seq_share_x[-i] = self.idx_pad
                             pos_x[-i] = 0
                     else:
+                        # save the fetched 'cur' as the step ground truth
                         gt_x[-i] = cur
                         gt_mask_x[-i] = 1
                         cur = seq_share_x[-i]
@@ -113,9 +116,7 @@ class CDSRDataset(Dataset):
                 continue
 
             cur = -1
-            gt_y = [self.n_item_y] * len(seq_share_y)  # caution!
-            gt_mask_y = [0] * len(seq_share_y)
-            for i in range(1, len(seq_share_y)):
+            for i in range(1, len_seq):
                 if pos_y[-i]:
                     if cur == -1:
                         cur = seq_share_y[-i] - self.n_item_x
@@ -150,8 +151,8 @@ class CDSRDataset(Dataset):
             gt_mask_x = [0] * len_pad + gt_mask_x
             gt_mask_y = [0] * len_pad + gt_mask_y
 
-            gt_share_x = [idx if idx < self.n_item_x else self.n_item_x for idx in gt][-self.len_rec:]
-            gt_share_y = [idx - self.n_item_x if idx >= self.n_item_x else self.n_item_y for idx in gt][-self.len_rec:]
+            gt_share_x = [idx if idx < self.n_item_x else self.n_item_x for idx in gt]
+            gt_share_y = [idx - self.n_item_x if idx >= self.n_item_x else self.n_item_y for idx in gt]
             gt_x = [self.n_item_x] * len_pad + gt_x
             gt_y = [self.n_item_y] * len_pad + gt_y
 

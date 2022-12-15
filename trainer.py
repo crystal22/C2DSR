@@ -127,11 +127,14 @@ class Trainer(object):
         loss_mi = loss_mi_x_pos + loss_mi_x_neg + loss_mi_y_pos + loss_mi_y_neg
 
         # recommendation
-        gt_mask_x = gt_mask_x[:, -self.len_rec:]
-        gt_mask_y = gt_mask_y[:, -self.len_rec:]
         h_share_rec = h_share_pos[:, -self.len_rec:, :]
         h_x_rec = hx_pos[:, -self.len_rec:]
         h_y_rec = hy_pos[:, -self.len_rec:]
+
+        gt_share_x = gt_share_x[:, -self.len_rec:]
+        gt_share_y = gt_share_y[:, -self.len_rec:]
+        gt_mask_x = gt_mask_x[:, -self.len_rec:]
+        gt_mask_y = gt_mask_y[:, -self.len_rec:]
         gt_x = gt_x[:, -self.len_rec:]
         gt_y = gt_y[:, -self.len_rec:]
 
