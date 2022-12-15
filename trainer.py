@@ -15,7 +15,7 @@ class Trainer(object):
         self.trainloader, self.valloader, self.testloader = get_dataloader(args)
         print('Loading graphs..')
         self.adj_share, self.adj_specific = make_graph(args, join(args.path_raw, 'train_new.txt'))
-        print('Finish loading data and graphs.')
+        print('Finished loading data and graphs.')
 
         self.model = C2DSR(args, self.adj_share, self.adj_specific).to(args.device)
         self.optimizer = torch.optim.Adam(filter(lambda x: x.requires_grad, self.model.parameters()), lr=args.lr,
