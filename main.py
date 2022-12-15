@@ -23,7 +23,7 @@ def main():
 
     # data
     parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--disable_embed_l2', action='store_true', help='disable l2 regularization on embedding')
     parser.add_argument('--shared_item_embed', action='store_true',
                         help='shared item embedding for a, b and merged domains')
+    parser.add_argument('--d_bias', action='store_true', help='bias of bilinear classifier for contrastive learning')
 
     # GNN
     parser.add_argument('--n_gnn', type=int, default=1, help='# layer of GNN implemented')

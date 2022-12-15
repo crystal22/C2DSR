@@ -6,21 +6,6 @@ from models.GCN import GCN
 from models.Attention import SelfAttention
 
 
-class Discriminator(torch.nn.Module):
-    def __init__(self, d_in, d_out, bias=False):
-        super().__init__()
-
-        if bias:
-            self.f_k = nn.Bilinear(d_in, d_out, 1, bias=True)
-            nn.init.zeros_(self.f_k.bias)
-        else:
-            self.f_k = nn.Bilinear(d_in, d_out, 1, bias=False)
-        torch.nn.init.xavier_uniform_(self.f_k.weight.data)
-
-    def forward(self, S, node):
-        return self.f_k(node, S)
-
-
 class C2DSR(torch.nn.Module):
     def __init__(self, args, adj, adj_specific):
         super(C2DSR, self).__init__()
@@ -49,12 +34,26 @@ class C2DSR(torch.nn.Module):
         self.attn_x = SelfAttention(self.args)
         self.attn_y = SelfAttention(self.args)
 
-        self.lin_X = nn.Linear(self.d_latent, self.n_item_x)
-        self.lin_Y = nn.Linear(self.d_latent, self.n_item_y)
-        self.lin_PAD = nn.Linear(self.d_latent, 1)
+        self.classifier_x = nn.Linear(self.d_latent, self.n_item_x)
+        self.classifier_y = nn.Linear(self.d_latent, self.n_item_y)
+        self.classifier_pad = nn.Linear(self.d_latent, 1)
+        torch.nn.init.xavier_uniform_(self.classifier_x.weight)
+        torch.nn.init.xavier_uniform_(self.classifier_y.weight)
+        torch.nn.init.xavier_uniform_(self.classifier_pad.weight)
+        nn.init.zeros_(self.classifier_x.bias)
+        nn.init.zeros_(self.classifier_y.bias)
+        nn.init.zeros_(self.classifier_pad.bias)
 
-        self.D_X = Discriminator(self.d_latent, self.d_latent)
-        self.D_Y = Discriminator(self.d_latent, self.d_latent)
+        if args.d_bias:
+            self.D_x = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
+            self.D_y = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
+            nn.init.zeros_(self.D_x.bias)
+            nn.init.zeros_(self.D_y.bias)
+        else:
+            self.D_x = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
+            self.D_y = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
+        torch.nn.init.xavier_uniform_(self.D_x.weight)
+        torch.nn.init.xavier_uniform_(self.D_y.weight)
 
         self.hi_share, self.hi_x, self.hi_y = None, None, None
 
@@ -63,24 +62,25 @@ class C2DSR(torch.nn.Module):
         self.hi_x = self.gnn_x(self.embed_i_x.weight, self.adj_specific)
         self.hi_y = self.gnn_y(self.embed_i_y.weight, self.adj_specific)
 
-    def forward(self, seq, seq_x, seq_y, pos, pos_x, pos_y):
-        seq_gnn_enc = F.embedding(seq, self.hi_share) + self.embed_i(seq)
-        seq_gnn_enc_x = F.embedding(seq_x, self.hi_x) + self.embed_i_x(seq_x)
-        seq_gnn_enc_y = F.embedding(seq_y, self.hi_y) + self.embed_i_y(seq_y)
+    def forward(self, seq_share, seq_x, seq_y, pos_share, pos_x, pos_y):
+        h_share_gnn = F.embedding(seq_share, self.hi_share) + self.embed_i(seq_share)
+        hx_gnn = F.embedding(seq_x, self.hi_x) + self.embed_i_x(seq_x)
+        hy_gnn = F.embedding(seq_y, self.hi_y) + self.embed_i_y(seq_y)
 
-        seq_gnn_enc *= self.d_latent ** 0.5
-        seq_gnn_enc_x *= self.d_latent ** 0.5
-        seq_gnn_enc_y *= self.d_latent ** 0.5
+        h_share_gnn *= self.d_latent ** 0.5
+        hx_gnn *= self.d_latent ** 0.5
+        hy_gnn *= self.d_latent ** 0.5
 
-        seq_attn_enc = self.attn_share(seq, seq_gnn_enc, pos)
-        seq_attn_enc_x = self.attn_x(seq_x, seq_gnn_enc_x, pos_x)
-        seq_attn_enc_y = self.attn_y(seq_y, seq_gnn_enc_y, pos_y)
+        h_share_attn = self.attn_share(seq_share, h_share_gnn, pos_share)
+        hx_attn = self.attn_x(seq_x, hx_gnn, pos_x)
+        hy_attn = self.attn_y(seq_y, hy_gnn, pos_y)
 
-        return seq_attn_enc, seq_attn_enc_x, seq_attn_enc_y
+        return h_share_attn, hx_attn, hy_attn
 
-    def forward_negative(self, seq_neg, pos):
-        seq_gnn_enc_neg = F.embedding(seq_neg, self.hi_share) + self.embed_i(seq_neg)
-        seq_gnn_enc_neg *= self.d_latent ** 0.5
-        seq_attn_enc_neg = self.attn_share(seq_neg, seq_gnn_enc_neg, pos)
+    def forward_share(self, seq, pos):
+        # forward share embedding layers only
+        h_gnn = F.embedding(seq, self.hi_share) + self.embed_i(seq)
+        h_gnn *= self.d_latent ** 0.5
+        h_attn = self.attn_share(seq, h_gnn, pos)
 
-        return seq_attn_enc_neg
+        return h_attn

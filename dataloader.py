@@ -13,11 +13,14 @@ class CDSRDataset(Dataset):
         self.device = args.device
         self.batch_size = args.batch_size
         self.dataset = args.dataset
+
+        self.idx_pad = args.idx_pad
         self.n_item_x = args.n_item_x
         self.n_item_y = args.n_item_y
-        self.idx_pad = args.idx_pad
-        self.len_max = args.len_max
         self.n_neg_sample = args.n_neg_sample
+
+        self.len_max = args.len_max
+        self.len_rec = args.len_rec
 
         if args.use_raw:
             if mode == 'train':
@@ -72,24 +75,24 @@ class CDSRDataset(Dataset):
 
             pos = list(range(1, len_seq))
 
-            x_count, seq_in_x, pos_x, seq_crpt_x = 1, [], [], []
-            y_count, seq_in_y, pos_y, seq_crpt_y = 1, [], [], []
+            x_count, seq_in_x, pos_x, seq_neg_x = 1, [], [], []
+            y_count, seq_in_y, pos_y, seq_neg_y = 1, [], [], []
 
             for i, idx in enumerate(seq_in):
                 if idx < self.n_item_x:
-                    seq_crpt_x.append(idx)
+                    seq_neg_x.append(idx)
                     seq_in_x.append(idx)
                     pos_x.append(x_count)
                     x_count += 1
-                    seq_crpt_y.append(random.randint(0, self.n_item_x - 1))
+                    seq_neg_y.append(random.randint(0, self.n_item_x - 1))
                     seq_in_y.append(self.idx_pad)
                     pos_y.append(0)
 
                 else:
-                    seq_crpt_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
+                    seq_neg_x.append(random.randint(self.n_item_x, self.idx_pad - 1))
                     seq_in_x.append(self.idx_pad)
                     pos_x.append(0)
-                    seq_crpt_y.append(idx)
+                    seq_neg_y.append(idx)
                     seq_in_y.append(idx)
                     pos_y.append(y_count)
                     y_count += 1
@@ -141,8 +144,8 @@ class CDSRDataset(Dataset):
             seq_in = [self.idx_pad] * len_pad + seq_in
             seq_in_x = [self.idx_pad] * len_pad + seq_in_x
             seq_in_y = [self.idx_pad] * len_pad + seq_in_y
-            seq_crpt_x = [self.idx_pad] * len_pad + seq_crpt_x
-            seq_crpt_y = [self.idx_pad] * len_pad + seq_crpt_y
+            seq_neg_x = [self.idx_pad] * len_pad + seq_neg_x
+            seq_neg_y = [self.idx_pad] * len_pad + seq_neg_y
 
             pos = [0] * len_pad + pos
             pos_x = [0] * len_pad + pos_x
@@ -150,17 +153,16 @@ class CDSRDataset(Dataset):
 
             # generate ground truth
             gt = [self.idx_pad] * len_pad + gt
-            gt_share_x = [idx if idx < self.n_item_x else self.n_item_x for idx in gt]
-            gt_share_y = [idx - self.n_item_x if idx >= self.n_item_x else self.n_item_y for idx in gt]
-            gt_x = [self.n_item_x] * len_pad + gt_x
-            gt_y = [self.n_item_y] * len_pad + gt_y
-
-            gt_mask = [1] * (len_seq - 1)
             gt_mask_x = [0] * len_pad + gt_mask_x
             gt_mask_y = [0] * len_pad + gt_mask_y
 
+            gt_share_x = [idx if idx < self.n_item_x else self.n_item_x for idx in gt][-self.len_rec:]
+            gt_share_y = [idx - self.n_item_x if idx >= self.n_item_x else self.n_item_y for idx in gt][-self.len_rec:]
+            gt_x = [self.n_item_x] * len_pad + gt_x[-self.len_rec:]
+            gt_y = [self.n_item_y] * len_pad + gt_y[-self.len_rec:]
+
             processed.append([seq_in, seq_in_x, seq_in_y, pos, pos_x, pos_y, gt, gt_share_x, gt_share_y, gt_x, gt_y,
-                              gt_mask, gt_mask_x, gt_mask_y, seq_crpt_x, seq_crpt_y])
+                              gt_mask_x, gt_mask_y, seq_neg_x, seq_neg_y])
         return processed
 
     def preprocess_evaluate(self):
