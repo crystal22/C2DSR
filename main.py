@@ -16,13 +16,13 @@ def main():
     parser = argparse.ArgumentParser(description='C2DSR')
 
     # Experiment
-    parser.add_argument('--data', type=str, default='ee', help='fk: Food-Kitchen'
+    parser.add_argument('--data', type=str, default='fk', help='fk: Food-Kitchen'
                                                                'mb: Movie-Book'
                                                                'ee: Entertainment-Education')
     parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
@@ -127,29 +127,29 @@ def main():
         res_val_epoch = res_val_x + res_val_y
 
         scheduler.step()
-        msg_best_val = ''
+        msg_best_val = f''
         flag_test_x, flag_test_y = False, False
 
         if res_val_x[0] > mrr_val_best_x:
             mrr_val_best_x = res_val_x[0]
-            msg_best_val += ' new x res |'
+            msg_best_val += f' new x res |'
             res_best_val_x = res_val_x + res_val_y
             flag_test_x = True
 
         if res_val_y[0] > mrr_val_best_y:
             mrr_val_best_y = res_val_y[0]
-            msg_best_val += ' new y res |'
+            msg_best_val += f' new y res |'
             res_best_val_y = res_val_x + res_val_y
             flag_test_y = True
 
         t_val = time.time()
-        noter.log_evaluate(f'\t| val   | time {t_val - t_start} |' + msg_best_val, res_val_epoch)
+        noter.log_evaluate(f'| valid |' + msg_best_val, res_val_epoch)
 
         # testing phase
         if flag_test_x or flag_test_y:
             pred_test_x, pred_test_y = trainer.run_test()
             res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
-            noter.log_evaluate(f'\t| test   | time {time.time() - t_val}' + msg_best_val, res_test_epoch)
+            noter.log_evaluate(f'| test  |' + msg_best_val, res_test_epoch)
 
             if flag_test_x:
                 res_test_x = res_test_epoch

@@ -212,17 +212,17 @@ class CDSRDataset(Dataset):
                     break
 
             if gt_last < self.n_item_x:
-                list_neg = random.sample(list(range(0, gt_last)) + list(range(gt_last + 1, self.n_item_x - 1)),
+                list_neg = random.sample(list(range(gt_last)) + list(range(gt_last + 1, self.n_item_x)),
                                          self.n_neg_sample)
-                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, 0,
-                                  gt_last, list_neg])
+                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, [idx_last_x], [idx_last_y],
+                                  [0], [gt_last], list_neg])
 
             else:
-                list_neg = random.sample(list(range(0, gt_last - self.n_item_x)) +
-                                         list(range(gt_last - self.n_item_x + 1, self.n_item_y - self.n_item_x + 1)),
+                list_neg = random.sample(list(range(gt_last - self.n_item_x)) +
+                                         list(range(gt_last - self.n_item_x + 1, self.n_item_y - self.n_item_x)),
                                          self.n_neg_sample)
-                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, 1,
-                                  gt_last - self.n_item_x, list_neg])
+                processed.append([seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, [idx_last_x], [idx_last_y],
+                                  [1], [gt_last - self.n_item_x], list_neg])
 
         return processed
 

@@ -15,7 +15,8 @@ class Noter(object):
         self.n_attn = args.n_attn
         self.n_head = args.n_head
         self.dropout_attn = args.dropout_attn
-        self.weight_decay = args.weight_decay
+        self.lr = args.lr
+        self.l2 = args.weight_decay
 
         self.f_log = join(args.path_log, time.strftime('%m-%d-%H:%M-', time.localtime()) + args.dataset + '-' +
                           str(args.n_gnn) + '-' + str(args.n_attn) + '-' + str(args.n_head) + '.txt')
@@ -39,9 +40,9 @@ class Noter(object):
     # print and save experiment briefs
     def log_brief(self):
         msg = f'\n[Info] Experiment (dataset:{self.dataset}, cuda:{self.cuda}) ' \
+              f'\n\t| lr {self.lr:.2e} | l2 {self.l2:.2e} |' \
               f'\n\t| n_gnn  {self.n_gnn} | dropout {self.dropout_gnn} |' \
-              f'\n\t| n_attn {self.n_attn} | dropout {self.dropout_attn} | n_head {self.n_head} |' \
-              f'\n\t| weight_decay {self.weight_decay:.2e} |'
+              f'\n\t| n_attn {self.n_attn} | dropout {self.dropout_attn} | n_head {self.n_head} |'
         print(msg)
         self.write(self.welcome + '\n' + msg)
 
@@ -55,7 +56,7 @@ class Noter(object):
     # print and save train phase result
     def log_train(self, loss_tr, loss_rec, loss_mi, t_gap):
         msg = (f'\t| train | loss {loss_tr:.4f} | loss_rec {loss_rec:.4f} | loss_mi {loss_mi:.4f} '
-               f'| time {t_gap:.1f}s |')
+               f'| time {t_gap:.0f}s |')
         print(msg)
         self.write(msg)
 

@@ -1,7 +1,6 @@
 import time
 from os.path import join
 from tqdm import tqdm
-import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -44,17 +43,17 @@ class Trainer(object):
         t_start = time.time()
 
         # training phase
-        # for batch in tqdm(self.trainloader, desc='  - training', leave=False):
-        #     self.model.convolve_graph()
-        #     loss_tr_batch, loss_rec_batch, loss_mi_batch = self.train_batch(batch)
-        #     loss_tr_epoch += loss_tr_batch.item() * len(batch)
-        #     loss_rec_epoch += loss_rec_batch.item() * len(batch)
-        #     loss_mi_epoch += loss_mi_batch.item() * len(batch)
-        # loss_tr_epoch /= self.len_train_dl
-        # loss_rec_epoch /= self.len_train_dl
-        # loss_mi_epoch /= self.len_train_dl
-        #
-        # self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
+        for batch in tqdm(self.trainloader, desc='  - training', leave=False):
+            self.model.convolve_graph()
+            loss_tr_batch, loss_rec_batch, loss_mi_batch = self.train_batch(batch)
+            loss_tr_epoch += loss_tr_batch.item() * len(batch)
+            loss_rec_epoch += loss_rec_batch.item() * len(batch)
+            loss_mi_epoch += loss_mi_batch.item() * len(batch)
+        loss_tr_epoch /= self.len_train_dl
+        loss_rec_epoch /= self.len_train_dl
+        loss_mi_epoch /= self.len_train_dl
+
+        self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
 
         # evaluating phase
         self.model.eval()
@@ -175,22 +174,18 @@ class Trainer(object):
             map(lambda x: x.to(self.device), batch)
         h_share, hx, hy = self.model(seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y)
 
-        pred_x, pred_y = [], []
+        rank_x, rank_y = [], []
         for i, feat in enumerate(h_share):
             h_share_last = h_share[i, -1]
 
             if xory_last[i] == 0:  # gt_last belongs to domain x
                 hx_last = hx[i, idx_last_x[i]]
                 scores_x = self.model.classifier_x(h_share_last + hx_last).squeeze(0)
-
-                score_larger = (scores_x[list_neg[i]] > scores_x[gt_last[i]]).data.cpu().numpy()
-                pred_x.append(np.sum(score_larger) + 1)
+                rank_x.append((scores_x[list_neg[i]] > scores_x[gt_last[i]]).sum().item() + 1)
 
             else:  # gt_last belongs to domain y
                 hy_last = hy[i, idx_last_y[i]]
                 scores_y = self.model.classifier_y(h_share_last + hy_last).squeeze(0)
+                rank_y.append((scores_y[list_neg[i]] > scores_y[gt_last[i]]).sum().item() + 1)
 
-                score_larger = (scores_y[list_neg[i]] > scores_y[gt_last[i]]).data.cpu().numpy()
-                pred_y.append(np.sum(score_larger) + 1)
-
-        return pred_x, pred_y
+        return rank_x, rank_y

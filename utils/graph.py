@@ -93,7 +93,6 @@ def preprocess_graph(args, filename):
     adj_share = sparse_mx_to_torch_sparse_tensor(adj_share)
     adj_specific = sparse_mx_to_torch_sparse_tensor(adj_specific)
 
-    print('real graph loaded!')
     return adj_share, adj_specific
 
 
