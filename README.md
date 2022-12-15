@@ -16,7 +16,7 @@ I also zip dataset exceed github file size limit, see more in `./data/`. Please 
 
 ## ***Known issue***
 
-I have re-written the entire project under my framework **without changing logics and operations** but some improvings on efficiency and grammar.
+I have re-written the entire project under my framework **without changing logics and operations** but some improving on efficiency and grammar.
 During doing so, some issues are found:
 
 - The result metrics are calculated based on samples negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set.
