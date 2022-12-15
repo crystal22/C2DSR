@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.GCN import GCN
-from models.Attention import SelfAttention
+from models.encoders import SelfAttention, GCN
 
 
 class C2DSR(torch.nn.Module):

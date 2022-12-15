@@ -230,7 +230,7 @@ class CDSRDataset(Dataset):
     def __getitem__(self, index):
         """ Get a batch with index. """
         data = self.data[index]
-        return tuple((map(lambda x: torch.LongTensor(x).to(self.device), data)))
+        return tuple(torch.LongTensor(x).to(self.device) for x in data)
 
 
 def count_item(path):

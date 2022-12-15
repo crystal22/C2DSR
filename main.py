@@ -60,7 +60,7 @@ def main():
 
     # train part
     parser.add_argument('--n_epoch', type=int, default=50, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=64, help='size of batch for training')
+    parser.add_argument('--batch_size', type=int, default=2, help='size of batch for training')
     parser.add_argument('--batch_size_eval', type=int, default=1024, help='size of batch for evaluation')
     parser.add_argument('--num_workers', type=int, default=0, help='# dataloader worker')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
@@ -113,40 +113,59 @@ def main():
 
     # modeling
     epoch, loss_tr, mrr_val_best_x, mrr_val_best_y = 0, 1e5, 0, 0
-    res_test_epoch, res_best_x, res_best_y = [0] * 12, [0] * 12, [0] * 12
+    res_best_val_x, res_best_val_y, res_val_epoch = [0] * 12, [0] * 12, [0] * 12
+    res_test_x, res_test_y, res_test_epoch = [0] * 12, [0] * 12, [0] * 12
     lr_register = args.lr
 
     for epoch in range(1, args.n_epoch + 1):
+        # training and validation phase
         noter.log_msg(f'\n[Epoch {epoch}]')
         t_start = time.time()
 
-        loss_tr, pred_val_x, pred_val_y, pred_test_x, pred_test_y = trainer.run_epoch()
+        loss_tr, pred_val_x, pred_val_y = trainer.run_epoch()
         res_val_x, res_val_y = cal_score(pred_val_x), cal_score(pred_val_y)
-        t_gap = time.time() - t_start
-
-        msg_best = ''
-        if res_val_x[0] > mrr_val_best_x or res_val_y[0] > mrr_val_best_y:
-            res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
-
-            if res_val_x[0] > mrr_val_best_x:
-                mrr_val_best_x = res_val_x[0]
-
-                msg_best += ' x res |'
-                res_best_x = res_test_epoch
-
-            if res_val_y[0] > mrr_val_best_y:
-                mrr_val_best_y = res_val_y[0]
-
-                msg_best += ' y res |'
-                res_best_y = res_test_epoch
 
         scheduler.step()
+        msg_best_val = ''
+        flag_test_x, flag_test_y = False, False
 
-        noter.log_train(loss_tr, t_gap)
-        if len(msg_best) > 0:
-            noter.log_evaluate('\t| test  | new |' + msg_best, res_test_epoch)
+        if res_val_x[0] > mrr_val_best_x:
+            mrr_val_best_x = res_val_x[0]
+            msg_best_val += ' x res |'
+            res_best_val_x = res_val_x + res_val_y
+            flag_test_x = True
 
-        # lr changing notice
+        if res_val_y[0] > mrr_val_best_y:
+            mrr_val_best_y = res_val_y[0]
+            msg_best_val += ' y res |'
+            res_best_val_y = res_val_x + res_val_y
+            flag_test_y = True
+
+        if len(msg_best_val) > 0:
+            msg_best_val = ' new |' + msg_best_val
+            if flag_test_x and not flag_test_y:
+                res_test_epoch = res_best_val_x
+            elif flag_test_y and not flag_test_x:
+                res_test_epoch = res_best_val_y
+            else:
+                # assert (flag_test_x and flag_test_y) == True
+                res_test_epoch = res_best_val_x
+
+        t_val = time.time()
+        noter.log_evaluate(f'\t| val   | time {t_val - t_start} |' + msg_best_val, res_test_epoch)
+
+        # testing phase
+        if flag_test_x or flag_test_y:
+            pred_test_x, pred_test_y = trainer.run_test()
+            res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
+            noter.log_evaluate(f'\t| test   | time {time.time() - t_val}', res_test_epoch)
+
+            if flag_test_x:
+                res_test_x = res_test_epoch
+            if flag_test_y:
+                res_test_y = res_test_epoch
+
+        # notice of changing lr
         lr_current = trainer.scheduler.get_last_lr()[0]
         if lr_register != lr_current:
             if trainer.optimizer.param_groups[0]['lr'] == args.lr_min:
@@ -156,8 +175,8 @@ def main():
                 lr_register = lr_current
 
     noter.log_final_result(epoch, {
-        'Best x': res_best_x,
-        'Best y': res_best_y
+        'Best x': res_test_x,
+        'Best y': res_test_y
     })
 
 

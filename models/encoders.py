@@ -31,3 +31,18 @@ class SelfAttention(torch.nn.Module):
         seq_enc = self.dropout_attn(seq_enc)
 
         return self.encoder(seq_enc, self.attn_mask, src_key_padding_mask=(seq != self.idx_pad))
+
+
+class GCN(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.dropout_gnn = args.dropout_gnn
+        self.n_gnn = args.n_gnn
+
+    def forward(self, h, adj):
+        h_sum = [h]
+        for _ in range(self.n_gnn):
+            h = F.dropout(h, self.dropout_gnn, training=self.training)
+            h = torch.spmm(adj, h)
+            h_sum.append(h)
+        return torch.stack(h_sum, dim=1).mean(dim=1)

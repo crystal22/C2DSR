@@ -1,3 +1,4 @@
+import time
 from os.path import join
 from tqdm import tqdm
 import numpy as np
@@ -36,13 +37,11 @@ class Trainer(object):
 
         self.noter.log_brief()
 
-        self.label_pos = torch.ones(args.batch_size, 1, device=self.device)
-        self.label_neg = torch.zeros(args.batch_size, 1, device=self.device)
-
     def run_epoch(self):
         self.model.train()
         self.optimizer.zero_grad()
         loss_tr_epoch, loss_rec_epoch, loss_mi_epoch = 0, 0, 0
+        t_start = time.time()
 
         # training phase
         for batch in tqdm(self.trainloader, desc='  - training', leave=False):
@@ -55,21 +54,30 @@ class Trainer(object):
         loss_rec_epoch /= self.len_train_dl
         loss_mi_epoch /= self.len_train_dl
 
+        self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
+
         # evaluating phase
         self.model.eval()
-        pred_val_x, pred_val_y, pred_test_x, pred_test_y = [], [], [], []
+        pred_val_x, pred_val_y = [], []
         with torch.no_grad():
             for batch in tqdm(self.valloader, desc='  - validating', leave=False):
                 pred_x, pred_y = self.evaluate_batch(batch)
                 pred_val_x += pred_x
                 pred_val_y += pred_y
 
+        return [loss_tr_epoch, loss_rec_epoch, loss_mi_epoch], pred_val_x, pred_val_y
+
+    def run_test(self):
+        self.model.eval()
+        pred_test_x, pred_test_y = [], []
+
+        with torch.no_grad():
             for batch in tqdm(self.testloader, desc='  - testing', leave=False):
                 pred_x, pred_y = self.evaluate_batch(batch)
                 pred_test_x += pred_x
                 pred_test_y += pred_y
 
-        return [loss_tr_epoch, loss_rec_epoch, loss_mi_epoch], pred_val_x, pred_val_y, pred_test_x, pred_test_y
+        return pred_test_x, pred_test_y
 
     def cal_mask(self, gt_mask):
         mask_x = gt_mask.float().sum(-1).unsqueeze(-1).repeat(1, gt_mask.size(-1))
@@ -79,7 +87,7 @@ class Trainer(object):
 
     def train_batch(self, batch):
         seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask_x, gt_mask_y, \
-            seq_share_neg_x, seq_share_neg_y = map(lambda x: x.to(self.device), batch)
+            seq_share_neg_x, seq_share_neg_y = batch
 
         # representation learning
         h_share_pos, hx_pos, hy_pos = self.model(seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y)
@@ -107,11 +115,14 @@ class Trainer(object):
         sim_y_pos = self.model.D_y(hy_mean_pos, hx_share_mean_pos)
         sim_y_neg = self.model.D_y(hy_mean_pos, h_share_mean_neg_y)
 
-        loss_mi_x_pos = F.binary_cross_entropy_with_logits(sim_x_pos, self.label_pos)
-        loss_mi_x_neg = F.binary_cross_entropy_with_logits(sim_x_neg, self.label_neg)
+        label_pos = torch.ones(len(seq_share), 1, device=self.device)
+        label_neg = torch.zeros(len(seq_share), 1, device=self.device)
 
-        loss_mi_y_pos = F.binary_cross_entropy_with_logits(sim_y_pos, self.label_pos)
-        loss_mi_y_neg = F.binary_cross_entropy_with_logits(sim_y_neg, self.label_neg)
+        loss_mi_x_pos = F.binary_cross_entropy_with_logits(sim_x_pos, label_pos)
+        loss_mi_x_neg = F.binary_cross_entropy_with_logits(sim_x_neg, label_neg)
+
+        loss_mi_y_pos = F.binary_cross_entropy_with_logits(sim_y_pos, label_pos)
+        loss_mi_y_neg = F.binary_cross_entropy_with_logits(sim_y_neg, label_neg)
 
         loss_mi = loss_mi_x_pos + loss_mi_x_neg + loss_mi_y_pos + loss_mi_y_neg
 
