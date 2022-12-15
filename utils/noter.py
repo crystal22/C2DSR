@@ -18,7 +18,7 @@ class Noter(object):
         self.lr = args.lr
         self.l2 = args.weight_decay
 
-        self.f_log = join(args.path_log, time.strftime('%m-%d-%H:%M-', time.localtime()) + args.dataset + '-' +
+        self.f_log = join(args.path_log, time.strftime('%m-%d-%H:%M-', time.localtime()) + args.data + '-' +
                           str(args.n_gnn) + '-' + str(args.n_attn) + '-' + str(args.n_head) + '.txt')
 
         if os.path.exists(self.f_log):
@@ -55,29 +55,30 @@ class Noter(object):
 
     # print and save train phase result
     def log_train(self, loss_tr, loss_rec, loss_mi, t_gap):
-        msg = (f'\t| train | loss {loss_tr:.4f} | loss_rec {loss_rec:.4f} | loss_mi {loss_mi:.4f} '
+        msg = (f'\t| train |\n\t| loss {loss_tr:.4f} | loss_rec {loss_rec:.4f} | loss_mi {loss_mi:.4f} '
                f'| time {t_gap:.0f}s |')
         print(msg)
         self.write(msg)
 
     # print and save evaluate phase result
-    def log_evaluate(self, msg, res):
-        msg += f'\n\t| mrr_x {res[0]:.4f} | ndcg_x_5 {res[1]:.4f} | ndcg_x_10 {res[2]:.4f} ' \
-               f'| hr_x_1 {res[3]:.4f} | hr_x_5 {res[4]:.4f} | ndcg_x_10 {res[5]:.4f} |' \
-               f'\n\t| mrr_y {res[6]:.4f} | ndcg_y_5 {res[7]:.4f} | ndcg_y_10 {res[8]:.4f} |' \
-               f'| hr_y_1 {res[9]:.4f} | hr_y_5 {res[10]:.4f} | hr_y_10 {res[11]:.4f} |\n'
+    def log_evaluate(self, res):
+        msg = f'\t| mrr_x {res[0]:.4f} | ndcg_x_5 {res[1]:.4f} | ndcg_x_10 {res[2]:.4f} ' \
+              f'| hr_x_1 {res[3]:.4f} | hr_x_5 {res[4]:.4f} | ndcg_x_10 {res[5]:.4f} |' \
+              f'\n\t| mrr_y {res[6]:.4f} | ndcg_y_5 {res[7]:.4f} | ndcg_y_10 {res[8]:.4f} ' \
+              f'| hr_y_1 {res[9]:.4f} | hr_y_5 {res[10]:.4f} | hr_y_10 {res[11]:.4f} |'
         print(msg)
         self.write(msg)
 
     # print and save final result
     def log_final_result(self, epoch: int, dict_res: dict):
         msg = f'\n[info] Modeling ends at epoch {epoch}' + '\n'
+        self.log_brief()
 
         for mode, res in dict_res.items():
             msg += f'\n[ {mode} ]'
             msg += f'\n\t| mrr_x {res[0]:.4f} | ndcg_x_5 {res[1]:.4f} | ndcg_x_10 {res[2]:.4f} ' \
                    f'| hr_x_1 {res[3]:.4f} | hr_x_5 {res[4]:.4f} | ndcg_x_10 {res[5]:.4f} |' \
-                   f'\n\t| mrr_y {res[6]:.4f} | ndcg_y_5 {res[7]:.4f} | ndcg_y_10 {res[8]:.4f} |' \
+                   f'\n\t| mrr_y {res[6]:.4f} | ndcg_y_5 {res[7]:.4f} | ndcg_y_10 {res[8]:.4f} ' \
                    f'| hr_y_1 {res[9]:.4f} | hr_y_5 {res[10]:.4f} | hr_y_10 {res[11]:.4f} |\n'
         msg += '\n'
         print(msg)

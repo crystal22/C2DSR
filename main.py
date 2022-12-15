@@ -1,6 +1,5 @@
 import os
 from os.path import join
-import time
 import argparse
 import numpy as np
 import random
@@ -22,8 +21,8 @@ def main():
     parser.add_argument('--len_rec', type=int, default=10, help='window length of sequence for recommendation')
 
     # data
-    parser.add_argument('--use_raw', action='store_false', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
@@ -120,36 +119,36 @@ def main():
     for epoch in range(1, args.n_epoch + 1):
         # training and validation phase
         noter.log_msg(f'\n[Epoch {epoch}]')
-        t_start = time.time()
 
         loss_tr, pred_val_x, pred_val_y = trainer.run_epoch()
         res_val_x, res_val_y = cal_score(pred_val_x), cal_score(pred_val_y)
         res_val_epoch = res_val_x + res_val_y
 
         scheduler.step()
-        msg_best_val = f''
+        msg_best_val = ''
         flag_test_x, flag_test_y = False, False
 
         if res_val_x[0] > mrr_val_best_x:
             mrr_val_best_x = res_val_x[0]
-            msg_best_val += f' new x res |'
+            msg_best_val += ' new x |'
             res_best_val_x = res_val_x + res_val_y
             flag_test_x = True
 
         if res_val_y[0] > mrr_val_best_y:
             mrr_val_best_y = res_val_y[0]
-            msg_best_val += f' new y res |'
+            msg_best_val += ' new y |'
             res_best_val_y = res_val_x + res_val_y
             flag_test_y = True
 
-        t_val = time.time()
-        noter.log_evaluate(f'| valid |' + msg_best_val, res_val_epoch)
+        noter.log_msg('\t| valid |' + msg_best_val)
+        noter.log_evaluate(res_val_epoch)
 
         # testing phase
         if flag_test_x or flag_test_y:
             pred_test_x, pred_test_y = trainer.run_test()
             res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
-            noter.log_evaluate(f'| test  |' + msg_best_val, res_test_epoch)
+            noter.log_msg('\t| test  |' + msg_best_val)
+            noter.log_evaluate(res_test_epoch)
 
             if flag_test_x:
                 res_test_x = res_test_epoch
