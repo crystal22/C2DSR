@@ -11,7 +11,7 @@ Paper author find the information leak issue from existed datasets which release
 
 Three processed datasets are provided: Amazon - Food & Kitchen, Amazon - Movie & Book and HVIDEO - Entertainment & Education.
 
-I also zip dataset exceed github file size limit, see more in `./data/`. Please upzip before use.
+I also zip datasets exceed github file size limit, see more in `./data/`. Please upzip before use.
 
 
 ## ***Known issue***
@@ -20,7 +20,7 @@ I have re-written the entire project under my framework **without changing logic
 During doing so, some issues are found:
 
 - The result metrics are calculated based on samples negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set.
-In other words, the result presented by this code will be better than the reality.
+In other words, the result presented by paper author will be better than reality.
 
 ## Usage
 
