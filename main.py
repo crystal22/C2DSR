@@ -159,7 +159,7 @@ def main():
                 lr_register = lr_current
 
         # early stop: overfitting
-        if not (flag_test_x or flag_test_y):
+        if len(msg_best_val) == 0:
             es_counter += 1
             noter.log_msg(f'\n\t| es    | {es_counter} / {args.es_patience} |')
         elif es_counter != 0:
