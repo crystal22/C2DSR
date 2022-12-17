@@ -123,33 +123,30 @@ def main():
         res_val_epoch = res_val_x + res_val_y
 
         msg_best_val = ''
-        flag_test_x, flag_test_y = False, False
 
         if res_val_x[0] > mrr_val_best_x:
             mrr_val_best_x = res_val_x[0]
             msg_best_val += ' new x |'
             res_best_val_x = res_val_x + res_val_y
-            flag_test_x = True
 
         if res_val_y[0] > mrr_val_best_y:
             mrr_val_best_y = res_val_y[0]
             msg_best_val += ' new y |'
             res_best_val_y = res_val_x + res_val_y
-            flag_test_y = True
 
         noter.log_msg('\t| valid |' + msg_best_val)
         noter.log_evaluate(res_val_epoch)
 
         # testing phase
-        if flag_test_x or flag_test_y:
+        if 'x' in msg_best_val or 'y' in msg_best_val:
             pred_test_x, pred_test_y = trainer.run_test()
             res_test_epoch = cal_score(pred_test_x) + cal_score(pred_test_y)
             noter.log_msg('\t| test  |' + msg_best_val)
             noter.log_evaluate(res_test_epoch)
 
-            if flag_test_x:
+            if 'x' in msg_best_val:
                 res_test_x = res_test_epoch
-            if flag_test_y:
+            if 'y' in msg_best_val:
                 res_test_y = res_test_epoch
 
         # notice of changing lr
