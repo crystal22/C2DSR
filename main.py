@@ -22,7 +22,7 @@ def main():
 
     # data
     parser.add_argument('--use_raw', action='store_true', help='use raw data from C2DSR, takes longer time')
-    parser.add_argument('--save_processed', action='store_false', help='use raw data from C2DSR, takes longer time')
+    parser.add_argument('--save_processed', action='store_true', help='use raw data from C2DSR, takes longer time')
     parser.add_argument('--n_neg_sample', type=int, default=999, help='# negative samples')
 
     # Model
@@ -107,7 +107,6 @@ def main():
     # initialize
     noter = Noter(args)
     trainer = Trainer(args, noter)
-    scheduler = torch.optim.lr_scheduler.StepLR(trainer.optimizer, step_size=args.lr_step, gamma=args.lr_gamma)
 
     # modeling
     epoch, loss_tr, mrr_val_best_x, mrr_val_best_y = 0, 1e5, 0, 0
@@ -123,7 +122,6 @@ def main():
         res_val_x, res_val_y = cal_score(pred_val_x), cal_score(pred_val_y)
         res_val_epoch = res_val_x + res_val_y
 
-        scheduler.step()
         msg_best_val = ''
         flag_test_x, flag_test_y = False, False
 

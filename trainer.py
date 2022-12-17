@@ -53,6 +53,7 @@ class Trainer(object):
         loss_rec_epoch /= self.len_train_dl
         loss_mi_epoch /= self.len_train_dl
 
+        self.scheduler.step()
         self.noter.log_train(loss_tr_epoch, loss_rec_epoch, loss_mi_epoch, time.time() - t_start)
 
         # evaluating phase
@@ -86,8 +87,8 @@ class Trainer(object):
         return mask_x
 
     def train_batch(self, batch):
-        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_share_x, gt_share_y, gt_x, gt_y, gt_mask_x, gt_mask_y, \
-            seq_share_neg_x, seq_share_neg_y = map(lambda x: x.to(self.device), batch)
+        seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, gt_share_x, gt_share_y, gt_x, gt_y, \
+            gt_mask_x, gt_mask_y, seq_share_neg_x, seq_share_neg_y = map(lambda x: x.to(self.device), batch)
 
         # representation learning
         h_share_pos, hx_pos, hy_pos = self.model(seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y)
@@ -125,6 +126,7 @@ class Trainer(object):
         loss_mi_y_neg = F.binary_cross_entropy_with_logits(sim_y_neg, label_neg)
 
         loss_mi = loss_mi_x_pos + loss_mi_x_neg + loss_mi_y_pos + loss_mi_y_neg
+        len_mi = (gt_mask_y + gt_mask_x).sum()
 
         # recommendation
         h_share_rec = h_share_pos[:, -self.len_rec:, :]
@@ -165,12 +167,15 @@ class Trainer(object):
         loss_y = (loss_y * (gt_mask_y.reshape(-1))).mean()
 
         loss_rec = loss_share_x + loss_share_y + loss_x + loss_y
+        len_rec = (gt_mask_y + gt_mask_x).sum()
 
         loss_batch = self.lambda_loss * loss_rec + (1 - self.lambda_loss) * loss_mi
         loss_batch.backward()
         self.optimizer.step()
 
-        return loss_batch, loss_rec, loss_mi
+        loss_rec /= len_rec
+        loss_mi /= len_mi
+        return self.lambda_loss * loss_rec + (1 - self.lambda_loss) * loss_mi, loss_rec, loss_mi
 
     def evaluate_batch(self, batch):
         seq_share, seq_share_x, seq_share_y, pos, pos_x, pos_y, idx_last_x, idx_last_y, xory_last, gt_last, list_neg = \
