@@ -20,7 +20,7 @@ I have re-written the entire project under my framework **without changing logic
 During doing so, some issues are found:
 
 - The result metrics are calculated based on sampled negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set for each ground truth.
-In other words, the result presented by paper's author will be better than reality.
+In other words, the result presented by paper's author will be better than it actually is.
 
 ## Usage
 
