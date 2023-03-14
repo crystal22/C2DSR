@@ -57,7 +57,7 @@ class Noter(object):
 
     # print and save experiment briefs
     def log_welcome(self):
-        self.log_msg('\n' + '-' * 20 + ' Experiment: C2DSR (\'23)' + '-' * 20)
+        self.log_msg('\n' + '-' * 20 + ' Experiment: C2DSR (CIKM\'22)' + '-' * 20)
         self.log_settings()
 
     # save args into log file
@@ -85,7 +85,7 @@ class Noter(object):
 
     # print and save final result
     def log_final_result(self, epoch: int, imp_val_best: float, res):
-        self.log_msg('\n' + '-' * 10 + f' C2DSR (\'23) experiment ends at epoch {epoch} ' + '-' * 10)
+        self.log_msg('\n' + '-' * 10 + f' C2DSR (CIKM\'22) experiment ends at epoch {epoch} ' + '-' * 10)
         self.log_settings()
 
         # extra spaces are for a satisfyingly aligned output format
