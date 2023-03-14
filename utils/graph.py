@@ -58,7 +58,7 @@ def preprocess_graph(args, filename):
         for d in seq:
             if d not in real_adj_share:
                 real_adj_share[d] = set()
-            if d < args.n_item_x:
+            if d < args.n_item_a:
                 if source != -1:
                     if d in real_adj_share[source]:
                         continue

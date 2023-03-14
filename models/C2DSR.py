@@ -14,65 +14,65 @@ class C2DSR(torch.nn.Module):
 
         self.d_latent = args.d_latent
         self.n_item = args.n_item
-        self.n_item_x = args.n_item_x
-        self.n_item_y = args.n_item_y
+        self.n_item_a = args.n_item_a
+        self.n_item_b = args.n_item_b
 
         self.embed_i = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
         if args.shared_item_embed:
-            self.embed_i_x = self.embed_i
-            self.embed_i_y = self.embed_i
+            self.embed_i_a = self.embed_i
+            self.embed_i_b = self.embed_i
         else:
-            self.embed_i_x = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
-            self.embed_i_y = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
+            self.embed_i_a = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
+            self.embed_i_b = torch.nn.Embedding(self.n_item, self.d_latent, padding_idx=self.n_item - 1)
 
         self.gnn_share = GCN(args)
-        self.gnn_x = GCN(args)
-        self.gnn_y = GCN(args)
+        self.gnn_a = GCN(args)
+        self.gnn_b = GCN(args)
 
         self.attn_share = SelfAttention(self.args)
-        self.attn_x = SelfAttention(self.args)
-        self.attn_y = SelfAttention(self.args)
+        self.attn_a = SelfAttention(self.args)
+        self.attn_b = SelfAttention(self.args)
 
-        self.classifier_x = nn.Linear(self.d_latent, self.n_item_x)
-        self.classifier_y = nn.Linear(self.d_latent, self.n_item_y)
+        self.classifier_a = nn.Linear(self.d_latent, self.n_item_a)
+        self.classifier_b = nn.Linear(self.d_latent, self.n_item_b)
         self.classifier_pad = nn.Linear(self.d_latent, 1)
-        torch.nn.init.xavier_uniform_(self.classifier_x.weight)
-        torch.nn.init.xavier_uniform_(self.classifier_y.weight)
+        torch.nn.init.xavier_uniform_(self.classifier_a.weight)
+        torch.nn.init.xavier_uniform_(self.classifier_b.weight)
         torch.nn.init.xavier_uniform_(self.classifier_pad.weight)
-        nn.init.zeros_(self.classifier_x.bias)
-        nn.init.zeros_(self.classifier_y.bias)
+        nn.init.zeros_(self.classifier_a.bias)
+        nn.init.zeros_(self.classifier_b.bias)
         nn.init.zeros_(self.classifier_pad.bias)
 
         if args.d_bias:
-            self.D_x = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
-            self.D_y = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
-            nn.init.zeros_(self.D_x.bias)
-            nn.init.zeros_(self.D_y.bias)
+            self.D_a = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
+            self.D_b = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=True)
+            nn.init.zeros_(self.D_a.bias)
+            nn.init.zeros_(self.D_b.bias)
         else:
-            self.D_x = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
-            self.D_y = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
-        torch.nn.init.xavier_uniform_(self.D_x.weight)
-        torch.nn.init.xavier_uniform_(self.D_y.weight)
+            self.D_a = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
+            self.D_b = nn.Bilinear(self.d_latent, self.d_latent, 1, bias=False)
+        torch.nn.init.xavier_uniform_(self.D_a.weight)
+        torch.nn.init.xavier_uniform_(self.D_b.weight)
 
-        self.hi_share, self.hi_x, self.hi_y = None, None, None
+        self.hi_share, self.hi_a, self.hi_b = None, None, None
 
     def convolve_graph(self):
         self.hi_share = self.gnn_share(self.embed_i.weight, self.adj_share)
-        self.hi_x = self.gnn_x(self.embed_i_x.weight, self.adj_specific)
-        self.hi_y = self.gnn_y(self.embed_i_y.weight, self.adj_specific)
+        self.hi_a = self.gnn_a(self.embed_i_a.weight, self.adj_specific)
+        self.hi_b = self.gnn_b(self.embed_i_b.weight, self.adj_specific)
 
-    def forward(self, seq_share, seq_x, seq_y, pos_share, pos_x, pos_y):
+    def forward(self, seq_share, seq_a, seq_b, pos_share, pos_a, pos_b):
         h_share_gnn = F.embedding(seq_share, self.hi_share) + self.embed_i(seq_share)
-        hx_gnn = F.embedding(seq_x, self.hi_x) + self.embed_i_x(seq_x)
-        hy_gnn = F.embedding(seq_y, self.hi_y) + self.embed_i_y(seq_y)
+        hx_gnn = F.embedding(seq_a, self.hi_a) + self.embed_i_a(seq_a)
+        hy_gnn = F.embedding(seq_b, self.hi_b) + self.embed_i_b(seq_b)
 
         h_share_gnn *= self.d_latent ** 0.5
         hx_gnn *= self.d_latent ** 0.5
         hy_gnn *= self.d_latent ** 0.5
 
         h_share_attn = self.attn_share(seq_share, h_share_gnn, pos_share)
-        hx_attn = self.attn_x(seq_x, hx_gnn, pos_x)
-        hy_attn = self.attn_y(seq_y, hy_gnn, pos_y)
+        hx_attn = self.attn_a(seq_a, hx_gnn, pos_a)
+        hy_attn = self.attn_b(seq_b, hy_gnn, pos_b)
 
         return h_share_attn, hx_attn, hy_attn
 
