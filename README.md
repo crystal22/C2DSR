@@ -14,13 +14,13 @@ Three processed datasets are provided: Amazon - Food & Kitchen, Amazon - Movie &
 I also zip datasets exceed github file size limit, see more in `./data/`. Please upzip before use.
 
 
-## ***Known issue***
+## Differences
 
-I have re-written the entire project under my framework **without changing logics and operations** but some improving on efficiency and grammar.
-During doing so, some issues are found:
-
-- The result metrics are calculated based on sampled negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set for each ground truth.
+- I have re-written the entire project under my framework **without changing logics and operations** but some improving on efficiency and grammar.
+During doing so, I found that the result metrics are calculated based on sampled negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set for each ground truth.
 In other words, the result presented by paper's author will be better than it actually is.
+
+- I replaced some of the original metrics with new metrics. Now this code will compute Recall, MRR and NDCG under K = {5, 20}.
 
 ## Usage
 
