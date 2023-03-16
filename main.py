@@ -59,8 +59,8 @@ def main():
     parser.add_argument('--cuda', type=str, default='0', help='running device')
     parser.add_argument('--seed', type=int, default=3407, help='random seeding')
     parser.add_argument('--n_epoch', type=int, default=200, help='# epoch maximum')
-    parser.add_argument('--batch_size', type=int, default=2, help='size of batch for training')
-    parser.add_argument('--batch_size_eval', type=int, default=2, help='size of batch for evaluation')
+    parser.add_argument('--batch_size', type=int, default=512, help='size of batch for training')
+    parser.add_argument('--batch_size_eval', type=int, default=2048, help='size of batch for evaluation')
     parser.add_argument('--num_workers', type=int, default=1, help='# dataloader worker')
     parser.add_argument('--es_patience', type=int, default=10)
 
