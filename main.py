@@ -26,7 +26,7 @@ def main():
     parser.add_argument('--zip_ee', action='store_true', help='zip Ent.-Edu. dataset')
 
     # Model
-    parser.add_argument('--d_latent', type=int, default=64, help='dimension of latent representation')
+    parser.add_argument('--d_latent', type=int, default=128, help='dimension of latent representation')
     parser.add_argument('--disable_embed_l2', action='store_true', help='disable l2 regularization on embedding')
     parser.add_argument('--shared_item_embed', action='store_true',
                         help='shared item embedding for a, b and merged domains')
