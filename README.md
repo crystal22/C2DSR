@@ -25,7 +25,7 @@ In other words, the result presented by paper's author will be much better than 
 ## Results
 
 Model:
-- C2DSR: proposed results in paper
+- C2DSR: proposed results in the paper
 - w/ 999: use official code and its default hyperparameters, w/ 999 negative items threshold during computing metrics
 - w/o 999: use official code and its default hyperparameters, w/o 999 negative items threshold during computing metrics
 - ours: use our code and re-tune hyperparameters, w/o 999 negative items threshold during computing metrics
