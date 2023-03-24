@@ -26,9 +26,9 @@ In other words, the result presented by paper's author will be much better than 
 
 Model:
 - C2DSR: proposed results in the paper
-- w/ 999: use official code and its default hyperparameters, w/ 999 negative items threshold during computing metrics
-- w/o 999: use official code and its default hyperparameters, w/o 999 negative items threshold during computing metrics
-- ours: use our code and re-tune hyperparameters, w/o 999 negative items threshold during computing metrics
+- w/ 999: use the official code and its default hyperparameters, and use only 999 out of all candidate items to compute metrics
+- w/o 999: use the official code and its default hyperparameters, and use all candidate items to compute metrics
+- ours: use our code and re-tune hyperparameters, and use all candidate items to compute metrics
 
 ***To be noticed***: 
 - The best results for w/ or w/o 999 on both domains are chosen separately, which means they may not occur in the same epoch.
