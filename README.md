@@ -16,7 +16,7 @@ I also zip datasets exceed github file size limit, see more in `./data/`. Please
 
 ## Differences
 
-- Official repo calculate metrics based on pre-rank standard by sampling only 999 negative items for comparison, which is a common approach in industry. On the contrary, this repo follow the common research standard, which is called rank in industry procedures. FYI, common industry procedures are *recall* -> *pre-rank* -> *rank* (-> *re-rank*).
+- Official repo calculate metrics based on pre-rank standard in industry procedures, only sampling 999 negative items instead of using the entire itemset. On the contrary, this repo follow the common research standard, which is called rank in industry procedures. FYI, common industry procedures are *recall* -> *pre-rank* -> *rank* (-> *re-rank*).
 
 - I replaced some original metrics with new ones. Now this code will compute Recall, MRR and NDCG under K = {5, 20}.
 
