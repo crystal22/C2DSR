@@ -16,9 +16,7 @@ I also zip datasets exceed github file size limit, see more in `./data/`. Please
 
 ## Differences
 
-- I have re-written the entire project under my framework ***without changing logics and operations*** but some improving on efficiency and grammar.
-During doing so, I found that the result metrics are calculated based on sampled negative list in `dataloader.py`. This list samples 999 negative items instead of using the whole set for each ground truth.
-In other words, the result presented by paper's author will be much better than it actually is.
+- Official repo calculate metrics based on pre-rank standard, which is a common approach in industry. Hence, it samples 999 negative items for comparison. This repo follow the common research standard, which is called rank in industry procedures. FYI, common industry procedures are *recall* -> *pre-rank* -> *rank* (-> *re-rank*).
 
 - I replaced some original metrics with new ones. Now this code will compute Recall, MRR and NDCG under K = {5, 20}.
 
