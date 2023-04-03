@@ -32,7 +32,7 @@ Model:
 - The best results for w/ or w/o 999 on both domains are chosen separately, which means they may not occur in the same epoch.
 - Our model selected the best result on both domains from same epoch outputs. Since our model uses different metrics, we only pick some of them for illustration.
 
-<div style='display: none'>
+<!--
 |  Model  |  Data   |   A    |        |         |         |        |        |        |        |   B    |        |         |         |        |        |        |        |
 |:-------:|:-------:|:------:|:------:|:-------:|:-------:|:------:|:------:|:------:|:------:|:------:|:------:|:-------:|:-------:|:------:|:------:|:------:|:------:|
 |         |         |  mrr   | ndcg@5 | ndcg@10 | ndcg@20 |  hr@1  |  hr@5  | hr@10  | hr@20  |  mrr   | ndcg@5 | ndcg@10 | ndcg@20 |  hr@1  |  hr@5  | hr@10  | hr@20  |    
@@ -40,7 +40,7 @@ Model:
 | w/ 999  | Foo-Kit | 0.0931 | 0.0911 | 0.0996  |         | 0.0622 | 0.0996 | 0.1427 |        | 0.0407 | 0.0357 | 0.0436  |         | 0.0199 | 0.0514 | 0.0761 |        |
 | w/o 999 | Foo-Kit | 0.0254 | 0.0243 | 0.0282  |         | 0.0160 | 0.0323 | 0.0444 |        | 0.0090 | 0.0083 | 0.0093  |         | 0.0061 | 0.0104 | 0.0136 |        |
 |  ours   | Foo-Kit |        | 0.0655 |         | 0.0818  |        | 0.0841 |        | 0.1420 |        | 0.0146 | 0.0202  |         |        | 0.0198 |        | 0.0202 |
-</div>
+-->
 
 Found:
 - After removing 999 threshold, results on the sparser domain (domain B) downgraded severely. My guess is because the second domain has more items.
