@@ -11,7 +11,7 @@ Paper's authors find the information leak issue from existed datasets which rele
 
 Three processed datasets are provided: Amazon - Food & Kitchen, Amazon - Movie & Book and HVIDEO - Entertainment & Education.
 
-I also zip datasets exceed github file size limit, see more in `./data/`. Please upzip before use.
+Zipped datasets are also provided in this repo, see more in `./data/raw.zip`. Please upzip before use.
 
 
 ## Differences
