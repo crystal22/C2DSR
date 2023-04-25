@@ -42,9 +42,6 @@ Model:
 |  ours   | Foo-Kit |        | 0.0655 |         | 0.0818  |        | 0.0841 |        | 0.1420 |        | 0.0146 | 0.0202  |         |        | 0.0198 |        | 0.0202 |
 -->
 
-Found:
-- After removing 999 threshold, results on the sparser domain (domain B) downgraded severely. My guess is because the second domain has more items.
-
 ![](img\data.png)
 
 
